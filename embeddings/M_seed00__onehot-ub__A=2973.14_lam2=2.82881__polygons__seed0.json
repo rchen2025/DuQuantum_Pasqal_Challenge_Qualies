@@ -157,7 +157,7 @@
   ]
  ],
  "alpha": 0.00926210351800405,
- "delta_final": 125.66370614359172,
+ "delta_final": 35.798747449578805,
  "h": [
   -2973.136500213904,
   -2973.136500213904,
@@ -2146,5 +2146,8 @@
   "subspace_worst_pair_rel_error": 9.214125734674125,
   "subspace_anisotropy": 27.857894017314727,
   "subspace_same_vehicle_asymmetry": 38.95999763128195
- }
+ },
+ "notes": [
+  "delta_final rewritten from 125.7 to 0.65 U_clique = 35.8 rad/\u00b5s by scripts/fix_cached_delta.py (DERIVATIONS \u00a76.7 bound); geometry unchanged"
+ ]
 }
