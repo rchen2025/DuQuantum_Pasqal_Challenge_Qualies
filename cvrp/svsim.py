@@ -86,7 +86,7 @@ def evolve(seq, dt_ns: float = 4.0, psi0: Optional[np.ndarray] = None, progress:
     psi = np.zeros(dim, complex) if psi0 is None else np.asarray(psi0, complex).copy()
     if psi0 is None:
         psi[0] = 1.0           # |g g ... g>  (index 0 = no excitations)
-    dense = n <= 10
+    dense = n <= 8   # dense expm is O(2^{3n}) per step; Krylov expm_multiply is far cheaper beyond 8 atoms
     if dense:
         from scipy.linalg import expm
         X = np.zeros((dim, dim))
