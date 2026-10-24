@@ -1,4 +1,16 @@
-# STATUS — Sat 2026-10-24, 18:10 ET (hackathon day; freeze Sun 11:00 ET)
+# STATUS — Sat 2026-10-24, 18:45 ET (hackathon day; freeze Sun 11:00 ET)
+
+**18:45 ET.** The tier-M fix is measured and confirmed (DERIVATIONS §6.7 table): with the final detuning bounded
+below the triangle coupling, M_seed00 goes from 0 % decodable / 0 % feasible to 99 % / 4.4 %, M_seed02 to
+100 % / 45 %, and M_seed01 (whose fit was already inside the bound) sits at 98 % / 39 %; best feasible shots
+are still 23–68 % above the model optimum because the one-hot ordering is set by distance couplings the plane
+cannot realise. qubo-solver's own pipeline on M_seed00/01 is in the same regime (1.6 % / 37 % feasible, 35 % /
+11 % CVRP gap). The two unbounded rows are kept under `|pre-6.7` as the before. results.csv: 71 rows. Running:
+tier L with the bound (60 atoms, emu-mps χ = 32, the slow runs), then M_seed00 at χ = 64 for convergence;
+lane b: qubo-solver quantum on M_seed02. Report refresh 3 requested (table now compact for M/L: ours +
+qubo-solver rows only; controls and pre-6.7 rows stay in results.csv). A `|` in a `--tag` cost one lost record
+on Windows (fixed, DID_NOT_WORK).
+
 
 **18:10 ET.** References switched (see 17:40): all 11 instances `best_known` via qubo-solver (60 s) + constrained SA,
 tier-S brute-force check agrees 5/5, values unchanged, results.csv re-scored (66 rows, only the status column

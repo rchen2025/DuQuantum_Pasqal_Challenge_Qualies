@@ -908,8 +908,27 @@ the same rule and unchanged geometry (`scripts/fix_cached_delta.py`), so before/
 Dry run on the M_seed00 register with δ_f = 35.8: the minimum single-flip defect gap turns from −70.4 to +19.4
 rad/µs (one-hot strings are again below their defects) while the model optimum's rank among one-hot strings
 stays 10 474 of 59 049 — the bound restores *decodability*, not solution quality, which is set by the distance
-couplings the plane cannot realise (Q-M1). Measured before/after: `|dfscale0.285` rows in results.csv (§6.8 below
-when they land).
+couplings the plane cannot realise (Q-M1).
+
+Measured before/after (emu-mps χ = 32, 500 shots, seed 0, identical registers — results.csv, tags `|pre-6.7` =
+before):
+
+| instance | δ_f [rad/µs] | decodable | feasible | best model gap | best CVRP gap | optimum's one-hot rank |
+|---|---|---|---|---|---|---|
+| M_seed00 before | 125.66 (2.28 U) | 0.000 | 0.000 | undefined | undefined | 10 474 |
+| M_seed00 after | 35.80 (0.65 U) | 0.994 | 0.044 | 67.9 % | 29.9 % | 10 474 |
+| M_seed01 (fit already inside the bound) | 24.01 (0.44 U) | 0.984 | 0.388 | 37.9 % | 9.2 % | 12 966 |
+| M_seed02 before | 125.66 (2.28 U) | 0.000 | 0.000 | undefined | undefined | 4 192 |
+| M_seed02 after | 35.80 (0.65 U) | 0.996 | 0.446 | 23.0 % | 16.0 % | 4 192 |
+| qubo-solver's pipeline, M_seed00 / M_seed01 (BLaDE register, χ = 32) | 23.9 / 24.1 | 0.99 / 1.00 | 0.016 / 0.37 | 72.1 % / 47.5 % | 35.2 % / 11.2 % | — |
+
+Reading: the bound turns decodability from 0 to ≥ 98 % on both affected instances and feasibility from 0 to
+4–45 %; the best feasible shot stays 23–68 % above the model optimum because the optimum's rank among one-hot
+strings is unchanged — exactly the split predicted above (constraints embed, objective does not). Our rows and
+qubo-solver's independent pipeline on the same instances land in the same regime (feasibility 2–37 %, gaps
+11–35 % CVRP), which supports reading this as a property of one-hot CVRP clustering on a planar 1/r⁶ register
+at K = 3 rather than of our embedder. The brief's "if no shot is feasible, the gap is undefined" rows are kept
+under `|pre-6.7` as the record of the mistake.
 
 
 ## 7. Questions a judge will ask
