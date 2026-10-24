@@ -1,0 +1,302 @@
+\documentclass[9pt,a4paper]{extarticle}
+\usepackage[margin=1.7cm]{geometry}
+\usepackage{fontspec}
+\setmainfont{DejaVu Serif}[Scale=0.92]
+\setmonofont{DejaVu Sans Mono}[Scale=0.85]
+\usepackage{amsmath,amssymb}
+\usepackage{booktabs,longtable,array,calc}
+\usepackage{graphicx}
+\usepackage{hyperref}
+\usepackage{float}
+\providecommand{\tightlist}{\setlength{\itemsep}{0pt}\setlength{\parskip}{0pt}}
+\setlength{\parskip}{3pt}
+\setlength{\parindent}{0pt}
+\title{Capacity-feasible CVRP clustering on an analog neutral-atom register (Track A)}
+\author{Pasqal challenge — team DuQuantum — repository `qhack`}
+\date{2026-10-25}
+\begin{document}
+\maketitle
+\vspace{-1.5em}
+\hypertarget{model}{%
+\section{1. Model}\label{model}}
+
+\textbf{Problem (brief §2).} Customers \(i=1..N\) with demands \(d_i\),
+\(K\) identical vehicles of capacity \(Q\), Euclidean costs.
+Cluster-first / route-second: the quantum part decides \emph{which}
+customers share a vehicle; each cluster is then routed exactly
+(Held--Karp). Decision variables \(x_{ik}\in\{0,1\}\) (customer \(i\) on
+vehicle \(k\)), one-hot per customer, \(n = NK\) atoms: \textbf{8 / 30 /
+60} on S / M / L, no slack. Every derivation is in
+\texttt{docs/DERIVATIONS.md} (§1--§4) and \texttt{docs/MODEL.md}; this
+report states results and decisions.
+
+\textbf{Objective.} Total pairwise distance inside each cluster,
+\(f=\sum_k\sum_{i<j} d_{ij}x_{ik}x_{jk}\) --- additive over clusters, so
+the exact set-partition DP (\texttt{cvrp/exact.py}) certifies the
+\emph{model} optimum on every tier.
+
+\textbf{Constraints and what the device sees (DERIVATIONS §2--§4).} At
+\(\Omega=0\), Eq. (1) assigns a bitstring the cost
+\(E(x) = -\delta_f\sum_i x_i + \sum_{i<j} C_6 r_{ij}^{-6} x_i x_j\): one
+\emph{uniform} linear coefficient (laser) and \emph{positive} couplings
+(positions). Exactly-one {[}={]}: squared penalty
+\(A\sum_i(1-\sum_k x_{ik})^2\) → \(h=-A\) on every variable (uniform
+(OK)), \(J=2A\) on each customer's \(K\)-clique (positive (OK)).
+Capacity {[}≤{]}: unbalanced penalization
+\(\sum_k[-\lambda_1(Q-L_k)+\lambda_2(Q-L_k)^2]\) (Montañez-Barrera et
+al.~2024), expanded; its per-customer linear part \(c_i\sum_k x_{ik}\)
+is a \emph{constant} on one-hot strings (the one-hot identity), so it is
+dropped --- \(\lambda_1\) disappears and what remains is the coupling
+\(+2\lambda_2 d_id_j\) on same-vehicle pairs, i.e.~a
+\textbf{load-balance term} \(\lambda_2\sum_k L_k^2\). It is soft: for
+\(K=2\) the balance optimum is capacity-feasible whenever a feasible
+split exists, for \(K\ge3\) only likely, so we score feasible decodes
+only and report the feasibility rate (Pitfall 9.1). Weights:
+\(A=\max_i\sum_{j\ne i}(d_{ij}+2\lambda_2 d_id_j)+1\) (provable: every
+argmin is one-hot), \(\lambda_2=0.15\,R/(2Q)\) from a 40-seed
+brute-force scan. Brute-force checker on tier S: argmin feasible and
+optimal on 5/5 shipped instances; \(A\) survives one halving and fails
+at ¼; \(\lambda_2\) is not binding on these instances
+(\texttt{out/gate1/}).
+
+\hypertarget{variable-accounting-brief-derive-4.1}{%
+\section{2. Variable accounting (brief Derive
+4.1)}\label{variable-accounting-brief-derive-4.1}}
+
+\begin{longtable}[]{@{}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 10\tabcolsep) * \real{0.1667}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 10\tabcolsep) * \real{0.1667}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 10\tabcolsep) * \real{0.1667}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 10\tabcolsep) * \real{0.1667}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 10\tabcolsep) * \real{0.1667}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 10\tabcolsep) * \real{0.1667}}@{}}
+\toprule\noalign{}
+\begin{minipage}[b]{\linewidth}\raggedright
+Encoding
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+count
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+S
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+M
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+L
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+fits 80?
+\end{minipage} \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+assignment variables only & \(NK\) & 8 & 30 & 60 & yes \\
++ binary slack (textbook) & \(NK+K\lceil\log_2(Q{+}1)\rceil\) & 14 & 45
+& 80 & yes (L = cap) \\
+\textbf{ours} (\texttt{onehot-ub}) & \(NK\) & \textbf{8} & \textbf{30} &
+\textbf{60} & yes \\
+\end{longtable}
+
+(\texttt{scripts/variable\_count.py}; the textbook rows are implemented
+and checked, DERIVATIONS §3.) Saving: 6 / 15 / 20 atoms, and no atom
+whose readout is discarded; the capacity term adds no coupling pairs
+beyond the objective's.
+
+\hypertarget{embedding-derivations-5}{%
+\section{3. Embedding (DERIVATIONS §5)}\label{embedding-derivations-5}}
+
+Fidelity formula reported everywhere: \(\|U/\alpha - J\|_F/\|J\|_F\)
+over off-diagonals, with the worst-pair error next to it. The generic
+least-squares embedder cannot realise the one-hot rook's graph: the
+\(K\) copies of a customer sit 5 µm apart, so the ``zero'' cross-vehicle
+couplings come out as large as the wanted ones (rel. Frobenius 0.95; on
+S\_seed04 the register's own ground state was infeasible). We therefore
+ask for less: on one-hot strings each customer pair contributes exactly
+one coupling, so only \emph{same-vehicle minus cross-vehicle} must equal
+\(\alpha w_{ij}\) (identity 5.7b). Each customer becomes a rigid 5 µm
+\(K\)-gon (clique pinned at the minimum separation,
+\(\alpha = C_6/5^6/2A\)); centres and orientations are fitted so the
+device energies of all one-hot strings match \(\alpha E_\text{QUBO}\),
+with explicit single-flip defect gaps and a fitted \(\delta_f\) (a
+constant on the subspace). Registers are cached and committed
+(\texttt{embeddings/}). Diagnostics per run: full-matrix fidelity,
+subspace fidelity, and the realised-register check (device argmin
+feasible? equal to the model optimum? defect gap). On tier S: argmin =
+model optimum on 5/5 instances.
+
+\textbf{Where it breaks (tier M, \(K=3\)).} Triangles 5 µm on a side
+cannot be far from each other's neighbours: the subspace-fit residual is
+38 (S: 0.15--0.32), defects fall below their parents and the model
+optimum ranks \textasciitilde10 000th among one-hot strings; opening the
+polygons lowers the energy scale without fixing the ordering
+(DERIVATIONS §5.7, STATUS). This is the brief's §4 warning in its
+sharpest form, and it is a property of one-hot encodings on a 2-D
+\(1/r^6\) register.
+
+\hypertarget{pulse-derivations-6}{%
+\section{4. Pulse (DERIVATIONS §6)}\label{pulse-derivations-6}}
+
+Three-point Ω ramp (15 \% / 70 \% / 15 \%) and a linear δ sweep from
+\(\delta_0=-\min(\max(|\delta_f|,2\Omega_{\max}),\delta_{\max})\) to
+\(\delta_f\) while Ω is on its plateau; every sequence is built with
+Pulser on \texttt{AnalogDevice} and validated
+(\texttt{to\_abstract\_repr()}, limits read from the device object).
+Scan on three tier-S instances, scored by P(reach), best gap and
+feasibility (never mean cost): longer is monotonically better;
+\(\Omega=0.75\,\Omega_{\max}\) beats full and half power;
+\(\delta_f\times\{0.8,1,1.25\}\) peaks at the fitted value.
+\textbf{Chosen: 5800 ns, \(0.75\,\Omega_{\max}\), fitted \(\delta_f\)}
+(35--38 rad/µs on S, inside ±125.66). Emulators: pulser-simulation
+(qutip) for every headline row, emu-sv as a cross-check, and an in-house
+exact state-vector integrator built from Pulser's own samples for scans
+(agrees with qutip to sampling noise, TV ≈ 0.05 at 500 shots); emu-mps
+for M/L with the bond dimension recorded.
+
+\hypertarget{results-brief-table-3-results.csv-python--m-cvrp.results}{%
+\section{\texorpdfstring{5. Results (brief Table 3;
+\texttt{results.csv},
+\texttt{python\ -m\ cvrp.results})}{5. Results (brief Table 3; results.csv, python -m cvrp.results)}}\label{results-brief-table-3-results.csv-python--m-cvrp.results}}
+
+\begin{longtable}[]{@{}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 16\tabcolsep) * \real{0.1111}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 16\tabcolsep) * \real{0.1111}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 16\tabcolsep) * \real{0.1111}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 16\tabcolsep) * \real{0.1111}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 16\tabcolsep) * \real{0.1111}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 16\tabcolsep) * \real{0.1111}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 16\tabcolsep) * \real{0.1111}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 16\tabcolsep) * \real{0.1111}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 16\tabcolsep) * \real{0.1111}}@{}}
+\toprule\noalign{}
+\begin{minipage}[b]{\linewidth}\raggedright
+instance
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+method
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+feas.
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+model gap
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+CVRP gap
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+P(reach C*)
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+P(gap≤5\%)
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+fidelity
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+backend
+\end{minipage} \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+S\_seed00 & ours & 0.99 & 0.0 \% & 0.0 \% & 0.90 & 0.90 & 0.26 &
+qutip \\
+S\_seed00 & ours, generic emb. & 0.22 & 0.0 \% & 0.0 \% & 0.13 & 0.13 &
+0.95 & qutip \\
+S\_seed00 & qubo-solver quantum & 1.00 & 0.0 \% & 0.0 \% & 0.78 & 0.78 &
+0.12 & qs-quantum \\
+S\_seed00 & qubo-solver tabu & 1.00 & 0.0 \% & 0.0 \% & 1.00 & 1.00 &
+undef. & qs-classical \\
+S\_seed00 & random sampler & 0.04 & 0.0 \% & 0.0 \% & 0.01 & 0.01 & 0.95
+& random \\
+S\_seed01 & ours & 0.88 & 0.0 \% & 0.0 \% & 0.88 & 0.88 & 0.21 &
+qutip \\
+S\_seed01 & ours, generic emb. & 0.09 & 0.0 \% & 0.0 \% & 0.07 & 0.07 &
+0.94 & qutip \\
+S\_seed01 & qubo-solver quantum & 0.80 & 0.0 \% & 0.0 \% & 0.78 & 0.78 &
+0.16 & qs-quantum \\
+S\_seed01 & qubo-solver tabu & 1.00 & 0.0 \% & 0.0 \% & 1.00 & 1.00 &
+undef. & qs-classical \\
+S\_seed01 & random sampler & 0.02 & 0.0 \% & 0.0 \% & 0.01 & 0.01 & 0.94
+& random \\
+S\_seed02 & ours (in-house SV) & 1.00 & 0.0 \% & 0.0 \% & 0.98 & 0.98 &
+0.31 & numpy-sv \\
+S\_seed02 & random sampler & 0.04 & 0.0 \% & 0.0 \% & 0.01 & 0.01 & 0.31
+& random \\
+S\_seed03 & ours (in-house SV) & 1.00 & 0.0 \% & 15.6 \% & 0.01 & 0.97 &
+0.29 & numpy-sv \\
+S\_seed03 & random sampler & 0.05 & 0.0 \% & 15.6 \% & 0.01 & 0.01 &
+0.29 & random \\
+S\_seed04 & ours & 0.99 & 0.0 \% & 21.7 \% & 0.09 & 0.62 & 0.32 &
+qutip \\
+S\_seed04 & ours, generic emb. & 0.06 & 0.0 \% & 21.7 \% & 0.00 & 0.03 &
+0.95 & qutip \\
+S\_seed04 & qubo-solver quantum & 1.00 & 27.3 \% & 30.0 \% & 0.00 & 0.00
+& 0.19 & qs-quantum \\
+S\_seed04 & qubo-solver tabu & 1.00 & 0.0 \% & 21.7 \% & 0.00 & 1.00 &
+undef. & qs-classical \\
+S\_seed04 & random sampler & 0.04 & 0.0 \% & 21.7 \% & 0.01 & 0.01 &
+0.95 & random \\
+\end{longtable}
+
+(generated by \texttt{python\ scripts/report\_tables.py} from
+\texttt{results.csv}; raw shots only --- repair rows are in results.csv
+under their own label; shots: 500 per emulator row, 2000 for the random
+sampler, 1 for a classical solver)
+
+References are proven optima for every instance (exhaustive
+set-partition DP × exact TSP; SA and naive enumeration agree; CPLEX
+unavailable). Decomposition gap (model optimum routed exactly vs
+\(C^*\)):
+
+\begin{longtable}[]{@{}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 8\tabcolsep) * \real{0.2000}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 8\tabcolsep) * \real{0.2000}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 8\tabcolsep) * \real{0.2000}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 8\tabcolsep) * \real{0.2000}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 8\tabcolsep) * \real{0.2000}}@{}}
+\toprule\noalign{}
+\begin{minipage}[b]{\linewidth}\raggedright
+instance
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+ρ
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+C* (proven)
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+model optimum routed exactly
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+decomposition gap
+\end{minipage} \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+S\_seed00 & 0.714 & 262.97 & 262.97 & 0.0 \% \\
+S\_seed01 & 0.857 & 245.02 & 245.02 & 0.0 \% \\
+S\_seed02 & 0.714 & 254.62 & 254.62 & 0.0 \% \\
+S\_seed03 & 0.643 & 197.44 & 228.34 & 15.6 \% \\
+S\_seed04 & 0.714 & 184.42 & 224.49 & 21.7 \% \\
+\end{longtable}
+
+Reading: with the structure-aware register and the scanned pulse, the
+device returns the model-optimal clustering in ≈ 90--98 \% of raw shots
+on tier S (random sampler: 0.7--1 \%; generic embedder: 7--13 \%). Where
+P(reach \(C^*\)) is low with a 0 \% model gap (S\_seed03/04) the loss is
+the decomposition, not the device. qubo-solver's own pipeline (BLaDE +
+its drive shaper, 5940 ns) reaches 0.78 on two instances and fails on
+S\_seed04; its classical tabu search finds every model optimum, and its
+default SA path does not (a single-start greedy descent at \(T_0=5\) ---
+we report a stated-parameter SA instead).
+
+\hypertarget{what-did-not-work}{%
+\section{6. What did not work}\label{what-did-not-work}}
+
+See \texttt{docs/DID\_NOT\_WORK.md} (one sentence each): no PyPI/GitHub
+from the sandboxes (Windows job runner instead); CPLEX not installable;
+a typed number caught by review; qubo-solver's default SA; the emu-mps
+calibration job blocking the queue; cross-platform non-reproducibility
+of the embedding optimiser (fixed by committing registers); the one-hot
+rook's graph not embedding for \(K=3\) (tier M), which is the honest
+limit of this encoding on this device.
+
+\hypertarget{use-of-ai}{%
+\section{7. Use of AI}\label{use-of-ai}}
+
+\texttt{docs/AI\_USE.md}. Claude wrote the code, the plumbing and most
+of the prose from the team's decisions; the Gate-1 formulation
+(\texttt{docs/MODEL.md}) was AI-drafted at the team's request under time
+pressure and checked by brute force; the team must re-derive it before
+judging. Every number in this report is produced by a script from
+committed records.
+
+\end{document}

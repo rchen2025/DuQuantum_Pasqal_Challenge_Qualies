@@ -41,9 +41,9 @@ deliverables: validate variable-table
 # D5: docs/REPORT.md -> report/report.pdf via pandoc, then page count.
 report:
 	mkdir -p report/figures
-	-$(PY) -m cvrp.report out/ --figures report/figures
-	pandoc docs/REPORT.md -o report/report.pdf --pdf-engine=xelatex -V geometry:margin=2cm -V fontsize=10pt
-	$(PY) -c "import re,sys;d=open('report/report.pdf','rb').read();n=len(re.findall(rb'/Type\s*/Page[^s]',d));print('report.pdf pages:',n);sys.exit(0 if n<=4 else 1)"
+	-$(PY) -m cvrp.report out/m1 out/m2 out/m3 --figures report/figures --results results.csv
+	$(PY) scripts/report_tables.py
+	$(PY) scripts/build_report.py --max-pages 4
 
 clean:
 	rm -rf out/*.json .pytest_cache
