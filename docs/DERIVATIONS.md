@@ -969,6 +969,22 @@ rather than hid it (results.csv, tier M rows: feasibility and gaps as found). Th
 approach that halves the variable count but produces a coupling pattern you cannot lay out is not a saving" —
 applies to one-hot beyond K = 2 on this device. → §5.7, STATUS Gate-2 options.
 
+**Q-work. How much of the result is the quantum part and how much is the decoder (brief §9.2)?** Replace the
+register by an assignment-valid random sampler — uniform random assignments encoded one-hot (`--backend
+random-onehot`) — and score identically: P(reach model optimum) = 2/16 ≈ 0.12 on every tier-S instance
+(two labelings of one optimal clustering among 16 assignments), capacity-feasible 25–63 %. The headline qutip
+rows give 0.94 / 0.95 / 0.89 on S_seed00/01/04 with feasibility ≥ 0.95: a 7–8× factor from the register alone.
+The plain uniform-bitstring sampler (0.7–1 %) is the weaker control and is also reported. → results.csv,
+`cvrp/run.py` (`random-onehot`), §5.7.
+
+**Q-A. Is the big exactly-one weight A just a safety factor? What happens with the tight one?** No — it is
+physically load-bearing. `onehot-ub-tight` uses the tight bound A = R_w/K·(1+1 %) (MODEL.md P1, sound by the
+same argument and checker-verified) with the same embedder and pulse: P(reach optimum) 0.94 → 0.03 on S_seed00
+(the realised register's ground state becomes the third-best clustering), 0.95 → 0.56 on S_seed01, 0.89 → 0.96
+on S_seed04. A sets the single-flip defect gaps in device units (§5.7) and the margin the embedding error can eat;
+the tight value leaves none on two of three seeds. We keep the provable rule for the headline and report tight
+as the ablation; its pulse was not re-tuned. → MODEL.md §6, §5.7, results.csv (`onehot-ub-tight`).
+
 ### Embedding & pulse
 
 **Q-pulse1. Why 5800 ns and 0.75·Ω_max, and is that over-fitted to three seeds?** The scan (§6.6) shows
