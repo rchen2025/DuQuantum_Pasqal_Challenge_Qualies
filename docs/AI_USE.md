@@ -7,9 +7,9 @@ derivations in `docs/DERIVATIONS.md` are the team's to defend at judging.
 |---|---|---|
 | D1 README / requirements | wrote the README, pinned versions from the venv's `pip freeze` | chose the stack, built the venv |
 | D2 model write-up | typed up §0–3, 5–7 of the derivations, wrote `scripts/variable_count.py`. **Gate 1 (`docs/MODEL.md`, DERIVATIONS §4, `cvrp/formulations/onehot_ub.py`, `tests/test_onehot_ub.py`) was drafted by Claude at the team's explicit request under time pressure on 2026-10-24: the derivation, the one-hot identity, the `A` rule and the `κ = 0.15` scan are AI work, checked by brute force but not yet re-derived by a team member** | chose one-hot + unbalanced penalization over domain-wall and binary encodings from a ranked comparison (fits M, all couplings positive, uniform linear terms, sparsest graph); must re-derive MODEL.md line by line before judging |
-| D3 instances | wrote generator/validator/exact reference solver + tests | specified depot rule, feasibility method, seeds |
-| D4 results.csv | wrote run/results pipeline and the metrics code against brief §9 | decided what is reported (feasible decodes only, labeled repair) |
-| D5 report | drafted `docs/REPORT.md` from the derivations and results; built the PDF | edited, cut to 4 pages, owns every claim |
+| D3 instances | wrote generator/validator/exact set-partition reference solver + SA cross-check + tests | specified depot rule, feasibility method, seeds |
+| D4 results.csv | wrote run/results pipeline, the §9 metrics code, the in-house exact state-vector emulator (cross-checked against pulser-simulation), the structure-aware one-hot embedder (DERIVATIONS §5.7) and the M2 scans; a fresh-context AI reviewer checked physics, algebra and fairness | decided what is reported (feasible decodes only, labeled repair), chose the M2 order, approved the embedding change |
+| D5 report | drafted `docs/REPORT.md` from the derivations and results; wrote the figure code and the PDF build; all tables are script-generated | edited, owns every claim |
 | Plumbing | Windows job runner, emulator timing calibration, Makefile | — |
 
 Known AI failure modes we checked for (brief): negative couplings (refused in code), min-spacing violations

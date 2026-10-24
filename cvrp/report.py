@@ -439,10 +439,9 @@ def plot_gap_histogram(recs: Sequence[Dict[str, Any]], path: str | Path, inst: O
         data.append(b); sources.add(src)
     data = np.array(data)
     nm = len(labels)
-    ncol = 1 if nm <= 3 else 2
     with plt.rc_context(RC):
-        fig_w = FIG_W if nm <= 6 else 2 * FIG_W
-        fig, ax = plt.subplots(figsize=(fig_w, FIG_W * 0.75 + 0.14 * int(np.ceil(nm / ncol))), constrained_layout=True)
+        fig_w = FIG_W if nm <= 4 else 2 * FIG_W
+        fig, ax = plt.subplots(figsize=(fig_w, max(FIG_W * 0.75, 0.55 + 0.16 * nm)), constrained_layout=True)
         x = np.arange(len(GAP_BINS))
         width = 0.84 / nm
         for j, lab in enumerate(labels):
@@ -457,7 +456,7 @@ def plot_gap_histogram(recs: Sequence[Dict[str, Any]], path: str | Path, inst: O
         if "top" in sources:
             title += " (top-10 shots only)"
         ax.set_title(title)
-        ax.legend(frameon=False, ncol=ncol, loc="upper center", bbox_to_anchor=(0.5, -0.18), fontsize=7)
+        ax.legend(frameon=False, loc="center left", bbox_to_anchor=(1.01, 0.5), fontsize=7, handlelength=1.5)
         return _finish(fig, path)
 
 
@@ -487,7 +486,7 @@ def plot_summary(results_csv_path: str | Path, path: str | Path,
     if not rows:
         raise ValueError(f"no raw rows in {results_csv_path}")
     instances = sorted({r["instance"] for r in rows})
-    methods = sorted({short_method(r["method"]) for r in rows})
+    methods = sorted({short_method(r["method"]) for r in rows}, key=_method_order)
     val: Dict[Tuple[str, str, str], float] = {}
     for r in rows:
         lab = short_method(r["method"])
@@ -498,8 +497,9 @@ def plot_summary(results_csv_path: str | Path, path: str | Path,
                 val[key] = max(val.get(key, -np.inf), v)   # several seeds of one method: show the best
     nm, ni = len(methods), len(instances)
     with plt.rc_context(RC):
-        fig, axes = plt.subplots(len(metrics), 1, figsize=(FIG_W, 1.6 * len(metrics) + 1.0), sharex=True,
-                                 constrained_layout=True)
+        fig_w = FIG_W if nm * ni <= 20 else 2 * FIG_W
+        fig, axes = plt.subplots(len(metrics), 1, figsize=(fig_w, max(1.45 * len(metrics) + 0.6, 0.55 + 0.16 * nm)),
+                                 sharex=True, constrained_layout=True)
         axes = np.atleast_1d(axes)
         x = np.arange(ni)
         width = 0.84 / nm
@@ -507,14 +507,14 @@ def plot_summary(results_csv_path: str | Path, path: str | Path,
             for j, lab in enumerate(methods):
                 ys = [val.get((col, inst, lab), np.nan) for inst in instances]
                 ax.bar(x + (j - (nm - 1) / 2) * width, ys, width, color=TAB10[j % 10], label=lab,
-                       hatch="//" if j >= 10 else None, edgecolor="white", lw=0.3)
+                       hatch="////" if j >= 10 else None, edgecolor="white", lw=0.3)
             ax.set_ylim(0, 1.05)
             ax.set_ylabel(title)
             ax.grid(axis="y", lw=0.4, color="0.85")
             ax.set_axisbelow(True)
-        axes[-1].set_xticks(x); axes[-1].set_xticklabels(instances, rotation=0 if ni <= 5 else 45)
-        axes[0].set_title("results.csv (raw shots, no repair)")
-        axes[0].legend(frameon=False, ncol=2 if nm > 4 else 1, fontsize=6.5, loc="best")
+        axes[-1].set_xticks(x); axes[-1].set_xticklabels(instances, rotation=0 if ni <= 6 else 45)
+        axes[0].set_title("results.csv: raw shots, no repair (best seed per method)")
+        axes[0].legend(frameon=False, loc="upper left", bbox_to_anchor=(1.01, 1.0), fontsize=7, handlelength=1.5)
         return _finish(fig, path)
 
 
