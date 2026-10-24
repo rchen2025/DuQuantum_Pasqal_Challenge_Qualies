@@ -85,13 +85,13 @@ noise, TV ≈ 0.05 at 500 shots); emu-mps for M/L with the bond dimension record
 | instance | method | feas. | model gap | CVRP gap | P(reach C*) | P(gap≤5%) | fidelity | backend |
 |---|---|---|---|---|---|---|---|---|
 | S_seed00 | ours | 1.00 | 0.0 % | 0.0 % | 0.94 | 0.94 | 0.26 | qutip |
-| S_seed00 | ours, tight A (ablation, SV) | 1.00 | 0.0 % | 0.0 % | 0.03 | 0.03 | 0.31 | numpy-sv |
+| S_seed00 | ours, tight A (ablation) | 1.00 | 0.0 % | 0.0 % | 0.03 | 0.03 | 0.31 | qutip |
 | S_seed00 | random assignments (one-hot) | 0.63 | 0.0 % | 0.0 % | 0.12 | 0.12 | 0.26 | random-onehot |
 | S_seed00 | qubo-solver quantum | 1.00 | 0.0 % | 0.0 % | 0.78 | 0.78 | 0.12 | qs-quantum |
 | S_seed00 | qubo-solver tabu | 1.00 | 0.0 % | 0.0 % | 1.00 | 1.00 | undef. | qs-classical |
 | S_seed00 | random sampler | 0.04 | 0.0 % | 0.0 % | 0.01 | 0.01 | 0.95 | random |
 | S_seed01 | ours | 0.95 | 0.0 % | 0.0 % | 0.95 | 0.95 | 0.21 | qutip |
-| S_seed01 | ours, tight A (ablation, SV) | 0.56 | 0.0 % | 0.0 % | 0.56 | 0.56 | 0.29 | numpy-sv |
+| S_seed01 | ours, tight A (ablation) | 0.52 | 0.0 % | 0.0 % | 0.52 | 0.52 | 0.29 | qutip |
 | S_seed01 | random assignments (one-hot) | 0.25 | 0.0 % | 0.0 % | 0.12 | 0.12 | 0.21 | random-onehot |
 | S_seed01 | qubo-solver quantum | 0.80 | 0.0 % | 0.0 % | 0.78 | 0.78 | 0.16 | qs-quantum |
 | S_seed01 | qubo-solver tabu | 1.00 | 0.0 % | 0.0 % | 1.00 | 1.00 | undef. | qs-classical |
@@ -105,7 +105,7 @@ noise, TV ≈ 0.05 at 500 shots); emu-mps for M/L with the bond dimension record
 | S_seed03 | qubo-solver tabu | 1.00 | 0.0 % | 15.6 % | 0.00 | 1.00 | undef. | qs-classical |
 | S_seed03 | random sampler | 0.05 | 0.0 % | 15.6 % | 0.01 | 0.01 | 0.29 | random |
 | S_seed04 | ours | 1.00 | 0.0 % | 21.7 % | 0.02 | 0.89 | 0.32 | qutip |
-| S_seed04 | ours, tight A (ablation, SV) | 0.99 | 0.0 % | 21.7 % | 0.02 | 0.96 | 0.34 | numpy-sv |
+| S_seed04 | ours, tight A (ablation) | 0.99 | 0.0 % | 21.7 % | 0.02 | 0.94 | 0.34 | qutip |
 | S_seed04 | random assignments (one-hot) | 0.62 | 0.0 % | 21.7 % | 0.11 | 0.13 | 0.32 | random-onehot |
 | S_seed04 | qubo-solver quantum | 1.00 | 27.3 % | 30.0 % | 0.00 | 0.00 | 0.19 | qs-quantum |
 | S_seed04 | qubo-solver tabu | 1.00 | 0.0 % | 21.7 % | 0.00 | 1.00 | undef. | qs-classical |
@@ -139,7 +139,7 @@ state, checker-verified) and changes nothing else. With the same embedder and th
 P(reach optimum) goes 0.94 → 0.03 (S_seed00; the realised register's ground state becomes the third-best clustering),
 0.95 → 0.56 (S_seed01) and 0.89 → 0.96 (S_seed04): a smaller $A$ shrinks the single-flip defect gaps the sweep must
 resolve and leaves less margin for the embedding error. The headline stays `onehot-ub`; the tight rows are in
-results.csv as the ablation (in-house exact emulator; qutip confirmation queued). Where P(reach $C^*$) is low with a
+results.csv as the ablation (qutip: 0.03 / 0.52 / 0.94; the in-house emulator agrees within sampling noise). Where P(reach $C^*$) is low with a
 0 % model gap (S_seed03/04) the loss is the decomposition, not the device. qubo-solver's own pipeline (BLaDE + its drive
 shaper, 5940 ns) reaches 0.18–0.79 of the model optimum on four instances and fails on S_seed04 (27 % model gap); its classical tabu search finds every model optimum,
 and its default SA path does not (a single-start greedy descent at $T_0=5$ — we report a stated-parameter SA instead).

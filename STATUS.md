@@ -1,4 +1,11 @@
-# STATUS — Sat 2026-10-24, 15:45 ET (hackathon day; freeze Sun 11:00 ET)
+# STATUS — Sat 2026-10-24, 17:12 ET (hackathon day; freeze Sun 11:00 ET)
+
+**17:12 ET.** Two runner lanes now (`win_runner.bat` heavy, `win_runner_lane.bat` light). Job 080 landed on qutip:
+`onehot-ub-tight` ablation P(reach) 0.03 / 0.52 / 0.94 on S_seed00/01/04 (sandbox SV: 0.03 / 0.56 / 0.96) and
+`random-onehot` 0.11 / 0.11 / 0.12 (500 shots; 2000-shot rows 0.12) — both in results.csv (59 rows) and the report.
+Tier-M as-is row (job 070 part 1, χ = 32): feasibility 0/500. qubo-solver's uncapped emu-mps on M is still
+running (χ ≈ 300, 37 s/step); overnight queue holds M_seed01/02, L_seed00–02 (χ = 32), an M χ = 64 convergence
+run, M tabu/random baselines, full pytest and the README demo on Windows.
 
 **16:40 ET addendum (Claude, chat session) — how to read the six new rows in results.csv (a56980e).**
 (1) *Useful quantum work (brief §9.2):* the assignment-valid random control (`random-onehot`) reaches the model

@@ -203,8 +203,8 @@ backend
 \endlastfoot
 S\_seed00 & ours & 1.00 & 0.0 \% & 0.0 \% & 0.94 & 0.94 & 0.26 &
 qutip \\
-S\_seed00 & ours, tight A (ablation, SV) & 1.00 & 0.0 \% & 0.0 \% & 0.03
-& 0.03 & 0.31 & numpy-sv \\
+S\_seed00 & ours, tight A (ablation) & 1.00 & 0.0 \% & 0.0 \% & 0.03 &
+0.03 & 0.31 & qutip \\
 S\_seed00 & random assignments (one-hot) & 0.63 & 0.0 \% & 0.0 \% & 0.12
 & 0.12 & 0.26 & random-onehot \\
 S\_seed00 & qubo-solver quantum & 1.00 & 0.0 \% & 0.0 \% & 0.78 & 0.78 &
@@ -215,8 +215,8 @@ S\_seed00 & random sampler & 0.04 & 0.0 \% & 0.0 \% & 0.01 & 0.01 & 0.95
 & random \\
 S\_seed01 & ours & 0.95 & 0.0 \% & 0.0 \% & 0.95 & 0.95 & 0.21 &
 qutip \\
-S\_seed01 & ours, tight A (ablation, SV) & 0.56 & 0.0 \% & 0.0 \% & 0.56
-& 0.56 & 0.29 & numpy-sv \\
+S\_seed01 & ours, tight A (ablation) & 0.52 & 0.0 \% & 0.0 \% & 0.52 &
+0.52 & 0.29 & qutip \\
 S\_seed01 & random assignments (one-hot) & 0.25 & 0.0 \% & 0.0 \% & 0.12
 & 0.12 & 0.21 & random-onehot \\
 S\_seed01 & qubo-solver quantum & 0.80 & 0.0 \% & 0.0 \% & 0.78 & 0.78 &
@@ -243,8 +243,8 @@ S\_seed03 & random sampler & 0.05 & 0.0 \% & 15.6 \% & 0.01 & 0.01 &
 0.29 & random \\
 S\_seed04 & ours & 1.00 & 0.0 \% & 21.7 \% & 0.02 & 0.89 & 0.32 &
 qutip \\
-S\_seed04 & ours, tight A (ablation, SV) & 0.99 & 0.0 \% & 21.7 \% &
-0.02 & 0.96 & 0.34 & numpy-sv \\
+S\_seed04 & ours, tight A (ablation) & 0.99 & 0.0 \% & 21.7 \% & 0.02 &
+0.94 & 0.34 & qutip \\
 S\_seed04 & random assignments (one-hot) & 0.62 & 0.0 \% & 21.7 \% &
 0.11 & 0.13 & 0.32 & random-onehot \\
 S\_seed04 & qubo-solver quantum & 1.00 & 27.3 \% & 30.0 \% & 0.00 & 0.00
@@ -315,14 +315,14 @@ realised register's ground state becomes the third-best clustering),
 shrinks the single-flip defect gaps the sweep must resolve and leaves
 less margin for the embedding error. The headline stays
 \texttt{onehot-ub}; the tight rows are in results.csv as the ablation
-(in-house exact emulator; qutip confirmation queued). Where P(reach
-\(C^*\)) is low with a 0 \% model gap (S\_seed03/04) the loss is the
-decomposition, not the device. qubo-solver's own pipeline (BLaDE + its
-drive shaper, 5940 ns) reaches 0.18--0.79 of the model optimum on four
-instances and fails on S\_seed04 (27 \% model gap); its classical tabu
-search finds every model optimum, and its default SA path does not (a
-single-start greedy descent at \(T_0=5\) --- we report a
-stated-parameter SA instead).
+(qutip: 0.03 / 0.52 / 0.94; the in-house emulator agrees within sampling
+noise). Where P(reach \(C^*\)) is low with a 0 \% model gap
+(S\_seed03/04) the loss is the decomposition, not the device.
+qubo-solver's own pipeline (BLaDE + its drive shaper, 5940 ns) reaches
+0.18--0.79 of the model optimum on four instances and fails on S\_seed04
+(27 \% model gap); its classical tabu search finds every model optimum,
+and its default SA path does not (a single-start greedy descent at
+\(T_0=5\) --- we report a stated-parameter SA instead).
 
 \hypertarget{what-did-not-work}{%
 \section{6. What did not work}\label{what-did-not-work}}
