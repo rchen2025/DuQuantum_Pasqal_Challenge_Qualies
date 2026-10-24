@@ -1,4 +1,20 @@
-# STATUS — Sat 2026-10-24, 18:45 ET (hackathon day; freeze Sun 11:00 ET)
+# STATUS — Sat 2026-10-24, 19:15 ET (hackathon day; freeze Sun 11:00 ET)
+
+**19:15 ET.** Team review of report_1850 (handoff "Agent next steps") acted on: (P1) the δ_f bound was derived for
+triangles; a K = 4 square's diagonal pair is 8× weaker (6.9 rad/µs), so the first L run (δ_f 38.7) favoured two
+opposite corners per customer — bound now uses the weakest intra-polygon pair, L re-queued with the saved
+60-atom layout, S/M registers unchanged (verified). (P2) `scripts/landscapes.py` enumerates all K^N one-hot
+strings on S and M (Q-M3): the load-balance term leaves the optimum untouched everywhere except M_seed02 (QUBO
+argmin 10.2 % above the model optimum = exactly qubo-solver's tabu row), so on M_seed02 ~10 of 23 points of model
+gap are the λ₂ rule; the register ordering is the main loss (ranks 10 474 / 12 966 / 4 192); the sweep samples
+*better* than the register's best feasible string, so the pulse is not the bottleneck; P(gap ≤ 5 %) ≡ P(optimum)
+holds on S and M_seed00/01 only. (P4) tier-S references are `proven_optimum` again (brute force agrees =
+brief level 1), M/L stay `best_known` (Richard: keep best known for M/L, focus on L). Tier-M comparison set is
+complete: qubo-solver quantum on all three M (feasible 0.016 / 0.37 / 0.39, CVRP gap 35 / 11 / 14 %); M_seed01
+random control re-measured on the cached register (0/2000). results.csv 72 rows. Track B slice 2 (solve_cluster
+interface + integration on the feasible M clusterings) running in the sandbox. Not removed: the AI-use section
+(the brief asks for it; no instruction from Richard to drop it).
+
 
 **18:45 ET.** The tier-M fix is measured and confirmed (DERIVATIONS §6.7 table): with the final detuning bounded
 below the triangle coupling, M_seed00 goes from 0 % decodable / 0 % feasible to 99 % / 4.4 %, M_seed02 to
