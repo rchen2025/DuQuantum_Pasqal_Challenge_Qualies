@@ -57,6 +57,9 @@ defect gaps and a fitted $\delta_f$ (a constant on the subspace). Registers are 
 Diagnostics per run: full-matrix fidelity, subspace fidelity, and the realised-register check (device argmin feasible?
 equal to the model optimum? defect gap). On tier S: argmin = model optimum on 5/5 instances.
 
+![Left: S_seed00 register (dimers = exactly-one cliques at 5 µm; filled = excited atoms of the modal feasible shot). Right: target vs realised couplings and their relative error.](../report/figures/register.png){width=44%} ![](../report/figures/couplings.png){width=54%}
+
+
 **Where it breaks (tier M, $K=3$).** Triangles 5 µm on a side cannot be far from each other's neighbours: the
 subspace-fit residual is 38 (S: 0.15–0.32), defects fall below their parents and the model optimum ranks ~10 000th among
 one-hot strings; opening the polygons lowers the energy scale without fixing the ordering (DERIVATIONS §5.7, STATUS). This
@@ -72,6 +75,9 @@ $\delta_f\times\{0.8,1,1.25\}$ peaks at the fitted value. **Chosen: 5800 ns, $0.
 (35–38 rad/µs on S, inside ±125.66). Emulators: pulser-simulation (qutip) for every headline row, emu-sv as a cross-check,
 and an in-house exact state-vector integrator built from Pulser's own samples for scans (agrees with qutip to sampling
 noise, TV ≈ 0.05 at 500 shots); emu-mps for M/L with the bond dimension recorded.
+
+![Pulse scan on three tier-S instances (in-house SV, 500 shots): P(reach model optimum) and feasibility vs duration for three Ω scales.](../report/figures/pulse_scan.png){width=55%}
+
 
 # 5. Results (brief Table 3; `results.csv`, `python -m cvrp.results`)
 

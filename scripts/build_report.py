@@ -23,11 +23,13 @@ WRAPPER = r"""\documentclass[9pt,a4paper]{extarticle}
 \usepackage{amsmath,amssymb}
 \usepackage{booktabs,longtable,array,calc}
 \usepackage{graphicx}
+\setkeys{Gin}{keepaspectratio}
 \usepackage{hyperref}
 \usepackage{float}
 \providecommand{\tightlist}{\setlength{\itemsep}{0pt}\setlength{\parskip}{0pt}}
 \setlength{\parskip}{3pt}
 \setlength{\parindent}{0pt}
+\setcounter{secnumdepth}{0}
 \title{%(title)s}
 \author{%(subtitle)s}
 \date{%(date)s}

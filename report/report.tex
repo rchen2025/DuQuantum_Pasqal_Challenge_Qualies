@@ -6,11 +6,13 @@
 \usepackage{amsmath,amssymb}
 \usepackage{booktabs,longtable,array,calc}
 \usepackage{graphicx}
+\setkeys{Gin}{keepaspectratio}
 \usepackage{hyperref}
 \usepackage{float}
 \providecommand{\tightlist}{\setlength{\itemsep}{0pt}\setlength{\parskip}{0pt}}
 \setlength{\parskip}{3pt}
 \setlength{\parindent}{0pt}
+\setcounter{secnumdepth}{0}
 \title{Capacity-feasible CVRP clustering on an analog neutral-atom register (Track A)}
 \author{Pasqal challenge — team DuQuantum — repository `qhack`}
 \date{2026-10-25}
@@ -122,6 +124,9 @@ subspace fidelity, and the realised-register check (device argmin
 feasible? equal to the model optimum? defect gap). On tier S: argmin =
 model optimum on 5/5 instances.
 
+\includegraphics[width=0.44\textwidth,height=\textheight]{../report/figures/register.png}
+\includegraphics[width=0.54\textwidth,height=\textheight]{../report/figures/couplings.png}
+
 \textbf{Where it breaks (tier M, \(K=3\)).} Triangles 5 µm on a side
 cannot be far from each other's neighbours: the subspace-fit residual is
 38 (S: 0.15--0.32), defects fall below their parents and the model
@@ -149,6 +154,13 @@ feasibility (never mean cost): longer is monotonically better;
 exact state-vector integrator built from Pulser's own samples for scans
 (agrees with qutip to sampling noise, TV ≈ 0.05 at 500 shots); emu-mps
 for M/L with the bond dimension recorded.
+
+\begin{figure}
+\centering
+\includegraphics[width=0.55\textwidth,height=\textheight]{../report/figures/pulse_scan.png}
+\caption{Pulse scan on three tier-S instances (in-house SV, 500 shots):
+P(reach model optimum) and feasibility vs duration for three Ω scales.}
+\end{figure}
 
 \hypertarget{results-brief-table-3-results.csv-python--m-cvrp.results}{%
 \section{\texorpdfstring{5. Results (brief Table 3;
