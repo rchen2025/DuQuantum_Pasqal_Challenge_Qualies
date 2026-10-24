@@ -39,7 +39,7 @@ from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
 
-DEFAULT_DURATION_NS = 4000
+DEFAULT_DURATION_NS = 5800      # M2 pulse scan (DERIVATIONS §6.6): device max 6000 ns minus the 200 ns margin
 DURATION_MARGIN_NS = 200       # keep this far from device.max_sequence_duration
 
 
@@ -74,7 +74,7 @@ class PulseParams:
     delta_init: float
     omega_device_max: float
     duration_ns: int = DEFAULT_DURATION_NS
-    omega_scale: float = 1.0
+    omega_scale: float = 0.75      # M2 pulse scan (DERIVATIONS §6.6): 0.75*Omega_max beat full power
     rise_frac: float = 0.15
     fall_frac: float = 0.15
     sweep_start_frac: float = 0.15
@@ -143,8 +143,9 @@ def default_delta_init(delta_final: float, device: Any) -> float:
 def default_for(emb_or_delta_final: Any, device: Any = None, **overrides: Any) -> PulseParams:
     """Baseline pulse for an ``cvrp.embed.Embedding`` (or a bare delta_final).
 
-    duration defaults to min(4000 ns, max_sequence_duration - 200 ns), snapped to
-    the clock period; omega_scale 1.0; delta_init from ``default_delta_init``.
+    duration defaults to min(5800 ns, max_sequence_duration - 200 ns), snapped to
+    the clock period; omega_scale 0.75 (both from the M2 pulse scan, DERIVATIONS §6.6;
+    the pre-scan baseline was 4000 ns at full power); delta_init from ``default_delta_init``.
     Any field of PulseParams can be overridden by keyword.
     """
     if device is None:

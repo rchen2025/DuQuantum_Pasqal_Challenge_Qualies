@@ -30,8 +30,9 @@ def _raises(exc, fn, *a, **kw):
 def test_default_params_follow_embedding_and_device():
     p = default_for(EMB)
     assert p.delta_final == EMB.delta_final
-    assert p.omega_device_max == CH.max_amp and abs(p.omega - CH.max_amp) < 1e-12
-    assert p.duration_ns == 4000 and p.duration_ns % CH.clock_period == 0
+    # defaults = M2 pulse scan result (DERIVATIONS §6.6): 0.75*Omega_max, device max minus 200 ns
+    assert p.omega_device_max == CH.max_amp and abs(p.omega - 0.75 * CH.max_amp) < 1e-12
+    assert p.duration_ns == AnalogDevice.max_sequence_duration - 200 and p.duration_ns % CH.clock_period == 0
     assert p.duration_ns <= AnalogDevice.max_sequence_duration - 200
     # delta_init = -min(max(|delta_final|, 2 Omega_max), max_abs_detuning)
     expect = -min(max(abs(EMB.delta_final), 2 * CH.max_amp), CH.max_abs_detuning)
