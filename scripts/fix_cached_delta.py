@@ -4,8 +4,9 @@
     python scripts/fix_cached_delta.py [--dry-run]
 
 The register geometry is left untouched (so before/after rows share the register); only `delta_final` is
-rewritten when it lies outside (0, 0.9 U_clique), to 0.65 U_clique, exactly as `cvrp.embed_onehot` now does
-for new registers.  U_clique is read off the register itself: C6 / (shortest intra-polygon distance)^6.
+rewritten when it lies outside (0, 0.9 U_min), to 0.65 U_min, exactly as `cvrp.embed_onehot` now does for new
+registers.  U_min is the WEAKEST intra-polygon pair, read off the register itself: C6 / (longest intra-polygon
+distance)^6 — the side for K <= 3, the diagonal (U_side / 8) for K = 4 squares.
 Prints one line per file; tier-S registers (delta_final ~ 0.65 U already) are reported as unchanged.
 """
 from __future__ import annotations
@@ -40,19 +41,19 @@ def main(argv=None) -> int:
         owner = np.repeat(np.arange(N), K)
         D = np.sqrt(((pts[:, None] - pts[None]) ** 2).sum(-1))
         intra = D[(owner[:, None] == owner[None, :]) & (np.arange(N * K)[:, None] != np.arange(N * K)[None, :])]
-        side = float(intra.min())
-        U_clique = float(d["C6"]) / side ** 6
+        chord_max = float(intra.max())
+        U_clique = float(d["C6"]) / chord_max ** 6          # weakest intra-polygon pair (= U_side for K <= 3)
         old = float(d["delta_final"])
         if 0.0 < old < 0.9 * U_clique:
-            print(f"{p.name}: delta_final {old:.3f} = {old / U_clique:.2f} U_clique ({U_clique:.2f}) — unchanged")
+            print(f"{p.name}: delta_final {old:.3f} = {old / U_clique:.2f} U_min ({U_clique:.2f}) — unchanged")
             continue
         new = 0.65 * U_clique
-        print(f"{p.name}: delta_final {old:.3f} = {old / U_clique:.2f} U_clique -> {new:.3f} (0.65 U_clique)")
+        print(f"{p.name}: delta_final {old:.3f} = {old / U_clique:.2f} U_min -> {new:.3f} (0.65 U_min)")
         if not a.dry_run:
             d["delta_final"] = new
             d.setdefault("notes", [])
             if isinstance(d["notes"], list):
-                d["notes"].append(f"delta_final rewritten from {old:.4g} to 0.65 U_clique = {new:.4g} rad/µs by "
+                d["notes"].append(f"delta_final rewritten from {old:.4g} to 0.65 U_min = {new:.4g} rad/µs by "
                                   "scripts/fix_cached_delta.py (DERIVATIONS §6.7 bound); geometry unchanged")
             p.write_text(json.dumps(d, indent=1))
     return 0

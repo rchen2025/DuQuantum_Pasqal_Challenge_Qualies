@@ -899,15 +899,23 @@ is $U_{\text{clique}} = C_6/s^6 = 55.1$ rad/µs. At the end of the sweep (Ω = 0
 $$E_0 = 0,\qquad E_1 = -\delta_f,\qquad E_2 = -2\delta_f + U_{\text{clique}},\qquad
 E_3 = -3\delta_f + 3U_{\text{clique}}\ (K=3),$$
 
-so the one-hot state $E_1$ is the clique ground state **only if** $0 < \delta_f < U_{\text{clique}}$. On tier S the
+so the one-hot state $E_1$ is the clique ground state **only if** $0 < \delta_f < U_{\text{clique}}$ — and for a
+general K-gon the binding number is the *weakest* intra-polygon pair, $U_{\min} = C_6/\ell_{\max}^6$ with
+$\ell_{\max}$ the longest chord: for K ≤ 3 every chord is the 5 µm side ($U_{\min} = U_{\text{clique}} = 55.1$), but a
+K = 4 square has diagonals $5\sqrt2 = 7.07$ µm, so $U_{\min} = U_{\text{side}}/8 = 6.93$ rad/µs and two *opposite*
+corners are favoured for any δ_f above that. (Four points in a plane cannot all be mutually equidistant — the
+max/min distance ratio is at least √2 — so a planar one-hot clique for K ≥ 4 is never uniform; a 1/r⁶ law turns
+that √2 into a factor 8 in coupling. This was caught by the team's review of report_1850 before the first L
+row was reported; the L run launched with the triangle bound was discarded.) The embedder uses $U_{\min}$ of the
+actual polygon, and `scripts/fix_cached_delta.py` reads it off the register. On tier S the
 one-hot-subspace fit of §5.7 returns δ_f = 33–38 rad/µs = 0.49–0.68 $U_{\text{clique}}$ (every cached S register,
 `scripts/fix_cached_delta.py --dry-run`), safely inside. On tier M the same fit is ill-conditioned (one-hot-subspace
 relative Frobenius error 0.96–1.55 against 0.25–0.57 on S, results.csv column `embedding_subspace_rel_frobenius`;
 energy-fit residual 38 against 0.06–0.32, Q-M1) and ran to the device maximum, δ_f = 125.66 rad/µs = 2.28 $U_{\text{clique}}$:
 the sweep then *rewards* two excitations per triangle, and the measured as-is row (M_seed00, emu-mps χ = 32)
 had 0 of 500 shots decodable — not a feasibility failure of the encoding but a wrong end point of the sweep.
-The embedder now enforces the bound: when the fit leaves $(0, 0.9\,U_{\text{clique}})$ it falls back to
-$0.65\,U_{\text{clique}}$, the ratio the well-conditioned S fits land at; cached registers are migrated with
+The embedder now enforces the bound: when the fit leaves $(0, 0.9\,U_{\min})$ it falls back to
+$0.65\,U_{\min}$, the ratio the well-conditioned S fits land at; cached registers are migrated with
 the same rule and unchanged geometry (`scripts/fix_cached_delta.py`), so before/after rows share the register.
 Dry run on the M_seed00 register with δ_f = 35.8: the minimum single-flip defect gap turns from −70.4 to +19.4
 rad/µs (one-hot strings are again below their defects) while the model optimum's rank among one-hot strings
