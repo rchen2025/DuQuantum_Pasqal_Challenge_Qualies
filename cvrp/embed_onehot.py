@@ -381,6 +381,18 @@ def embed_onehot(J: np.ndarray, h: np.ndarray, N: int, K: int, device: Any = Non
         notes_push = True
     pts = atom_coords(c, th, K, side)
     pts = pts - pts.mean(0)
+    # Hard guarantee of the device radius (Pulser's check is a strict '>' with no tolerance): shrink the
+    # polygon CENTRES towards the origin until every atom is inside; polygons keep their 5 µm side.
+    if r_max is not None:
+        for _ in range(50):
+            rad = float(np.sqrt((pts ** 2).sum(1)).max())
+            if rad <= r_max - 1e-3:
+                break
+            c = c * ((r_max - 2e-3) / rad)
+            pts = atom_coords(c, th, K, side)
+            pts = pts - pts.mean(0)
+        if float(np.sqrt((pts ** 2).sum(1)).max()) > r_max - 1e-3:
+            notes.append("register still exceeds the device radius after shrinking centres (polygons too large for N)")
 
     # --- reports ------------------------------------------------------------------------------ #
     U = coupling_matrix(pts, C6)
