@@ -35,7 +35,7 @@ def test_random_backend_record_is_complete():
         assert m["best_model_gap"] is not None and m["best_model_gap"] >= -1e-9
         assert m["best_cvrp_gap"] is not None
     assert m["reference_status"] == "proven_optimum"
-    assert rec["method"] == "textbook+random+repair:energy-descent"
+    assert rec["method"] == "textbook[emb=generic]+random+repair:energy-descent"
     # textbook formulation has non-uniform linear terms -> not a faithful device embedding
     assert rec["device_faithful"] is False
     with tempfile.TemporaryDirectory() as d:
