@@ -1,0 +1,249 @@
+"""End-to-end: instance + formulation -> QUBO -> register -> pulse -> backend -> bitstrings -> metrics.
+
+    python -m cvrp.run --instance instances/S_seed00.json --formulation textbook \
+        --backend qutip --shots 500 --seed 0 --out out/
+
+Writes one *run record* JSON per call (``out/<instance>__<formulation>__<method>__seed<k>.json``)
+holding everything needed to rebuild the results.csv row (cvrp.results) and the
+figures (cvrp.report): formulation + weights, embedding summary (alpha, delta_final,
+fidelity numbers, coordinates), pulse parameters, backend + its parameters (bond
+dimension for emu-mps), the raw counts, and the §9 metrics computed on feasible
+decodes only (cvrp.metrics).  An optional *labelled* repair pass is scored
+separately and never mixed into the raw numbers.
+
+Backends
+    qutip     pulser_simulation.QutipBackendV2   (exact, <= ~12 atoms)
+    emu-sv    emu_sv.SVBackend                    (exact, <= ~20 atoms)
+    emu-mps   emu_mps.MPSBackend                  (approximate; --bond-dim recorded)
+    random    uniform random bitstrings           (the brief's random-sampler comparison)
+    counts    --counts file.json (bitstring -> count) from somewhere else (e.g. a cloud job)
+
+Everything but the backend call runs in any environment with pulser-core; the
+emulators need torch/qutip (the Windows venv).  ``--dry-run`` builds and
+validates the full sequence and writes the record without counts.
+"""
+from __future__ import annotations
+
+import argparse
+import json
+import platform
+import sys
+import time
+from pathlib import Path
+from typing import Any, Callable, Dict, List, Optional
+
+import numpy as np
+
+from .common import Instance, bits_to_str, str_to_bits
+from .embed import Embedding, embed
+from .metrics import Metrics, ModelOptimum, model_optimum, random_counts, score_counts
+from .model import get_formulation
+from .pulse import PulseParams, build_sequence, default_for, validate
+
+EMULATORS = ("qutip", "emu-sv", "emu-mps")
+
+
+# --------------------------------------------------------------------------- #
+# Backends
+# --------------------------------------------------------------------------- #
+def run_backend(seq, backend: str, shots: int, seed: int, bond_dim: int = 64, dt: float = 10.0,
+                precision: float = 1e-5) -> Dict[str, Any]:
+    """Sequence -> {"counts": {...}, "backend_params": {...}}.  Emulator
+    adapters live in qopt.run (yesterday's toolkit); only the thin dispatch
+    is here so the labels in the record are explicit."""
+    from qopt import run as qrun
+    info: Dict[str, Any] = {"backend": backend, "shots": shots}
+    t0 = time.perf_counter()
+    if backend == "qutip":
+        counts = qrun.emulate_qutip(seq, shots=shots, sampling_rate=0.1)
+        import pulser_simulation
+        info.update(sampling_rate=0.1, version=pulser_simulation.__version__)
+    elif backend == "emu-sv":
+        counts = qrun.emulate_emu_sv(seq, shots=shots, dt=dt)
+        import emu_sv
+        info.update(dt_ns=dt, version=emu_sv.__version__)
+    elif backend == "emu-mps":
+        counts, stats = qrun.emulate_emu_mps(seq, shots=shots, dt=dt, precision=precision, max_bond_dim=bond_dim,
+                                             return_stats=True)
+        import emu_mps
+        peak = None
+        try:
+            last = stats[-1] if isinstance(stats, (list, tuple)) else stats
+            peak = last.get("max_bond_dimension") if hasattr(last, "get") else getattr(last, "max_bond_dimension", None)
+        except Exception:  # noqa: BLE001
+            peak = None
+        info.update(dt_ns=dt, precision=precision, bond_dim=bond_dim, peak_bond_dim=peak, version=emu_mps.__version__)
+    else:
+        raise ValueError(f"unknown emulator backend {backend!r}")
+    info["wall_s"] = time.perf_counter() - t0
+    return {"counts": {str(k): int(v) for k, v in counts.items()}, "backend_params": info}
+
+
+# --------------------------------------------------------------------------- #
+# Labelled repair (generic): greedy descent on the QUBO energy
+# --------------------------------------------------------------------------- #
+def energy_descent_repair(Q: np.ndarray, offset: float, max_passes: int = 50) -> Callable[[np.ndarray], np.ndarray]:
+    """Return a transform x -> x' that flips, one bit at a time, the bit that
+    lowers the QUBO energy the most until no single flip helps.  This is a
+    classical post-processing step; results that use it are labelled
+    ``repair=energy-descent`` and reported next to, never instead of, raw."""
+    Q = np.asarray(Q, float)
+    diag = np.diag(Q).copy()
+
+    def transform(x: np.ndarray) -> np.ndarray:
+        x = np.asarray(x, float).copy()
+        for _ in range(max_passes):
+            # dE_i for flipping bit i:  (1-2x_i) * (Q_ii + 2 * sum_{j!=i} Q_ij x_j)
+            g = Q @ x
+            dE = (1 - 2 * x) * (diag + 2 * (g - diag * x))
+            i = int(np.argmin(dE))
+            if dE[i] >= -1e-12:
+                break
+            x[i] = 1 - x[i]
+        return x.astype(np.int8)
+
+    return transform
+
+
+# --------------------------------------------------------------------------- #
+# The run
+# --------------------------------------------------------------------------- #
+def parse_kv(s: Optional[str]) -> Dict[str, float]:
+    out: Dict[str, float] = {}
+    for part in (s or "").split(","):
+        if part.strip():
+            k, v = part.split("=")
+            out[k.strip()] = float(v)
+    return out
+
+
+def method_label(formulation: str, backend: str, repair: str) -> str:
+    base = f"{formulation}+{backend}"
+    return base if repair == "none" else f"{base}+repair:{repair}"
+
+
+def run_one(inst: Instance, formulation: str, backend: str, shots: int, seed: int,
+            weights: Optional[Dict[str, float]] = None, pulse_overrides: Optional[Dict[str, Any]] = None,
+            embed_kw: Optional[Dict[str, Any]] = None, repair: str = "none", bond_dim: int = 64,
+            counts: Optional[Dict[str, int]] = None, dry_run: bool = False,
+            mopt: Optional[ModelOptimum] = None, verbose: bool = True) -> Dict[str, Any]:
+    t_start = time.perf_counter()
+    f = get_formulation(formulation, inst, **(weights or {}))
+    J, h = f.couplings(), f.linear()
+
+    # --- embedding (raises on negative couplings) ------------------------- #
+    emb: Embedding = embed(J, h, seed=seed, **(embed_kw or {}))
+    fid = emb.fidelity
+    device_faithful = bool(fid.linear_terms_uniform and not fid.limit_violations)
+
+    # --- pulse + Pulser-validated sequence --------------------------------- #
+    p: PulseParams = default_for(emb, **(pulse_overrides or {}))
+    seq = build_sequence(emb, p)
+    problems = validate(seq)
+    if problems:
+        raise RuntimeError(f"sequence failed validation: {problems}")
+
+    rec: Dict[str, Any] = {
+        "instance": inst.name, "tier": inst.tier, "instance_seed": inst.seed,
+        "formulation": f.describe(), "n_vars": f.n_vars, "atoms": emb.n,
+        "method": method_label(formulation, backend, repair), "backend": backend, "seed": seed, "shots": shots,
+        "repair": repair, "dmm": False, "device": emb.device, "device_faithful": device_faithful,
+        "embedding": emb.to_dict(), "pulse": p.to_dict(), "sequence_duration_ns": seq.get_duration(),
+        "versions": {"python": platform.python_version(), "pulser": __import__("pulser").__version__},
+    }
+    if verbose:
+        print(f"[{inst.name}] {formulation}: {f.n_vars} vars -> {emb.n} atoms; alpha={emb.alpha:.3f} delta_final={emb.delta_final:.3f}")
+        print(f"   fidelity rel_frob={fid.rel_frobenius_offdiag:.3f} worst pair={fid.worst_pair_rel_error:.3f} uniform h={fid.linear_terms_uniform} violations={fid.limit_violations}")
+        print(f"   pulse {p.duration_ns} ns, Omega={p.omega:.3f}, delta {p.delta_init:.2f} -> {p.delta_final:.2f}; sequence validated")
+    if dry_run:
+        rec["counts"] = None
+        rec["wall_s"] = time.perf_counter() - t_start
+        return rec
+
+    # --- sample ------------------------------------------------------------ #
+    if counts is not None:
+        rec["backend_params"] = {"backend": "counts", "shots": sum(counts.values())}
+    elif backend == "random":
+        counts = random_counts(f.n_vars, shots, seed)
+        rec["backend_params"] = {"backend": "random", "shots": shots, "seed": seed}
+    else:
+        out = run_backend(seq, backend, shots, seed, bond_dim=bond_dim)
+        counts, rec["backend_params"] = out["counts"], out["backend_params"]
+    rec["counts"] = counts
+
+    # --- score (feasible decodes only) ------------------------------------- #
+    if mopt is None:
+        mopt = model_optimum(f)
+    m_raw, _ = score_counts(counts, f, inst, mopt=mopt)
+    rec["metrics_raw"] = m_raw.to_dict()
+    if repair != "none":
+        if repair != "energy-descent":
+            raise ValueError("only repair=energy-descent is implemented")
+        tr = energy_descent_repair(f.Q(), f.offset)
+        m_rep, _ = score_counts(counts, f, inst, mopt=mopt, transform=tr)
+        rec["metrics_repaired"] = m_rep.to_dict()
+    rec["wall_s"] = time.perf_counter() - t_start
+    if verbose:
+        print("   raw:      " + m_raw.summary().replace("\n", "\n             "))
+        if repair != "none":
+            print("   repaired: " + m_rep.summary().replace("\n", "\n             "))
+    return rec
+
+
+def record_path(out_dir: Path, rec: Dict[str, Any]) -> Path:
+    name = f"{rec['instance']}__{rec['method'].replace('+', '_').replace(':', '-')}__seed{rec['seed']}.json"
+    return out_dir / name
+
+
+def save_record(rec: Dict[str, Any], out_dir: str | Path) -> Path:
+    out_dir = Path(out_dir)
+    out_dir.mkdir(parents=True, exist_ok=True)
+    pth = record_path(out_dir, rec)
+    pth.write_text(json.dumps(rec, indent=1, default=_json_default))
+    return pth
+
+
+def _json_default(o):
+    if isinstance(o, (np.integer,)):
+        return int(o)
+    if isinstance(o, (np.floating,)):
+        return float(o)
+    if isinstance(o, np.ndarray):
+        return o.tolist()
+    if isinstance(o, (set, frozenset)):
+        return sorted(o)
+    return str(o)
+
+
+def main(argv=None):
+    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap.add_argument("--instance", required=True)
+    ap.add_argument("--formulation", required=True)
+    ap.add_argument("--backend", default="random", help="qutip | emu-sv | emu-mps | random")
+    ap.add_argument("--shots", type=int, default=500)
+    ap.add_argument("--seed", type=int, default=0, help="run seed (embedding starts, random sampler)")
+    ap.add_argument("--weights", default="", help="penalty weights, e.g. A=12,B=3 (default: formulation's rule)")
+    ap.add_argument("--pulse", default="", help="pulse overrides, e.g. duration_ns=3000,omega_scale=0.8")
+    ap.add_argument("--slow", nargs=3, type=float, metavar=("CENTRE", "WIDTH", "FACTOR"), default=None)
+    ap.add_argument("--bond-dim", type=int, default=64)
+    ap.add_argument("--repair", default="none", help="none | energy-descent (labelled separately)")
+    ap.add_argument("--counts", default=None, help="JSON file bitstring->count to score instead of sampling")
+    ap.add_argument("--dry-run", action="store_true")
+    ap.add_argument("--out", default="out")
+    a = ap.parse_args(argv)
+
+    inst = Instance.load(a.instance)
+    pulse_over: Dict[str, Any] = parse_kv(a.pulse)
+    if "duration_ns" in pulse_over:
+        pulse_over["duration_ns"] = int(pulse_over["duration_ns"])
+    if a.slow:
+        pulse_over["slow_region"] = tuple(a.slow)
+    counts = json.loads(Path(a.counts).read_text()) if a.counts else None
+    rec = run_one(inst, a.formulation, a.backend, a.shots, a.seed, weights=parse_kv(a.weights),
+                  pulse_overrides=pulse_over, repair=a.repair, bond_dim=a.bond_dim, counts=counts, dry_run=a.dry_run)
+    pth = save_record(rec, a.out)
+    print(f"record -> {pth}")
+
+
+if __name__ == "__main__":
+    main()
