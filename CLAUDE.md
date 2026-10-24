@@ -15,9 +15,13 @@ python -m cvrp.instances --out instances/                   # D3: generate seede
 python -m cvrp.reference instances/                         # D3: exact references + SA cross-check -> JSON
 python -m cvrp.validator instances/                         # D3 gate: every §2 assumption + certificate + reference
 python scripts/variable_count.py --write-md                 # D2: §4 table into docs/MODEL_WRITEUP.md (never typed)
-python -m cvrp.run --instance instances/S_seed00.json --formulation <name> --backend qutip --shots 500 --seed 0 --out out/
-python -m cvrp.results out/ -o results.csv                  # D4
-python -m cvrp.baseline ...                                 # qubo-solver quantum + classical, same scoring
+python -m cvrp.run --instance instances/S_seed00.json --formulation onehot-ub --embedder polygons --backend qutip --shots 500 --seed 0 --out out/
+#   --backend qutip | emu-sv | emu-mps (--bond-dim) | numpy-sv (in-house exact SV, runs anywhere) | random ; --embedder generic | polygons
+#   registers are cached in embeddings/ (committed) so every row is reproducible across platforms; delete a file to recompute
+python -m cvrp.results out/m1 out/m2 -o results.csv         # D4 (one row per instance, method, seed; repair rows separate)
+python -m cvrp.baseline --instance ... --formulation onehot-ub --mode both --shots 500 --seed 0 --out out/m1/   # qubo-solver (BLaDE+local_energy_scale) + classical (tabu / stated-parameter SA), our scorer
+python scripts/scan.py weights|pulse|slow --out out/m2_x     # M2 scans; writes run records + <out>/scan.md
+python scripts/derivation_numbers.py                         # regenerate the §5.7 / §4.1 / §6 tables in DERIVATIONS.md from records
 make demo | make deliverables | make report                 # end-to-end on one tier-S seed | D1–D5 checklist | report.pdf (<= 4 pages)
 scripts/win_runner.bat                                      # Windows job runner: drops .cmd into .runner/queue, logs in .runner/out
 ```
@@ -37,7 +41,9 @@ Units everywhere: rad/µs, µm, int ns. δ<0 favours |g⟩, δ>0 favours |r⟩; 
 | `instances.py` / `validator.py` | tiers S/M/L, seeded, certificate-first; validator = D3 gate |
 | `exact.py` / `reference.py` | exact set-partition DP (all tiers, proven optimum, #optima mod relabeling) + SA cross-check; writes `reference` into instance JSON |
 | `model.py` + `formulations/` | registry, `brute_force_check` (feasible fraction, argmin decodes feasible?, gap landscape, weight half/double) ; `textbook` = throwaway one-hot+slack for plumbing |
-| `embed.py` | QUBO → register on AnalogDevice: refuses J≤0, enforces 5/38/80, fidelity = rel. Frobenius off-diag + worst pair, uniform-linear check |
+| `embed.py` | generic QUBO → register on AnalogDevice: refuses J≤0, enforces 5/38/80, fidelity = rel. Frobenius off-diag + worst pair, uniform-linear check |
+| `embed_onehot.py` | structure-aware embedding for one-hot formulations: rigid 5 µm K-gons, fit of device energies on the one-hot subspace + single-flip defect gaps, fitted δ_f (DERIVATIONS §5.7) |
+| `svsim.py` | in-house exact state-vector emulator from Pulser's own samples (≤ ~14 atoms); cross-checked against pulser-simulation |
 | `pulse.py` | three-point Ω ramp + linear δ sweep (+ slow region), validated by Pulser's `Sequence` |
 | `run.py` | formulation+embedding+pulse+backend → bitstrings → decode → feasible/infeasible → optional *labeled* repair → §9 metrics → run-record JSON |
 | `results.py` / `baseline.py` / `report.py` | results.csv (D4) / qubo-solver baselines / figures |
