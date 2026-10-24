@@ -746,6 +746,25 @@ relabeling. CVRP gap: the best clustering routed by exact TSP, cross-checked aga
 with stated parameters. Every reference is labelled *proven* or *best known* (brief §9.3). → §0, §3.1,
 `docs/MODEL_WRITEUP.md`.
 
+**Q-ref. How do you know your reference values are optimal, with no CPLEX?** For every tier we enumerate
+*all* capacity-feasible clusterings with a set-partition dynamic programme over customer subsets (3^N/2 ≈
+7 M (set, subset) pairs on L, 1.3 s) and route each cluster exactly with Held–Karp; that is brute force in
+the brief's sense, so `reference_status = proven_optimum`. Simulated annealing (10 restarts, stated
+parameters in each JSON) independently reaches the same value on all 11 instances, and on tier S a naive
+enumeration of all K^N assignments agrees too. CPLEX is not installable here (`docs/DID_NOT_WORK.md`).
+→ `cvrp/exact.py`, `cvrp/reference.py`.
+
+**Q-fleet. Your L optima use 3 of 4 vehicles — is that allowed?** Yes: brief §2 assumption 6 says a vehicle
+may be left unused at zero cost, and by the triangle inequality merging two tours never costs more when
+capacity allows. The reference therefore minimises over *at most* K non-empty clusters, and the clustering
+model must not force exactly K non-empty groups (that would change the optimum). → §1, `cvrp.exact.exact_partition`.
+
+**Q-random. Why is the random sampler a serious baseline on tier S?** With 14 textbook variables the space
+has 16 384 strings and ~0.6 % of uniform samples already decode to the optimal clustering (`cvrp.run
+--backend random`, 2000 shots: P(reach ref) = 0.006 raw, 0.066 after labelled energy-descent repair).
+Any quantum result on S must beat these numbers at equal shots or it says nothing; the brief asks for exactly
+this comparison (§9.2, "replace the quantum part with a random sampler"). → `cvrp/metrics.py`.
+
 ### Embedding & pulse
 
 **Q: How do you know the register implements *your* QUBO and not something else?**
