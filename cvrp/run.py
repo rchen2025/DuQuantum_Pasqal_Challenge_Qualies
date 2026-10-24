@@ -15,6 +15,8 @@ Backends
     qutip     pulser_simulation.QutipBackendV2   (exact, <= ~12 atoms)
     emu-sv    emu_sv.SVBackend                    (exact, <= ~20 atoms)
     emu-mps   emu_mps.MPSBackend                  (approximate; --bond-dim recorded)
+    numpy-sv  cvrp.svsim                          (in-house exact state vector, <= ~14 atoms, runs anywhere
+                                                   with pulser-core; cross-checked against qutip)
     random    uniform random bitstrings           (the brief's random-sampler comparison)
     counts    --counts file.json (bitstring -> count) from somewhere else (e.g. a cloud job)
 
@@ -40,14 +42,14 @@ from .metrics import Metrics, ModelOptimum, model_optimum, random_counts, score_
 from .model import get_formulation
 from .pulse import PulseParams, build_sequence, default_for, validate
 
-EMULATORS = ("qutip", "emu-sv", "emu-mps")
+EMULATORS = ("qutip", "emu-sv", "emu-mps", "numpy-sv")
 
 
 # --------------------------------------------------------------------------- #
 # Backends
 # --------------------------------------------------------------------------- #
 def run_backend(seq, backend: str, shots: int, seed: int, bond_dim: int = 64, dt: float = 10.0,
-                precision: float = 1e-5) -> Dict[str, Any]:
+                precision: float = 1e-5, dt_sv: float = 4.0) -> Dict[str, Any]:
     """Sequence -> {"counts": {...}, "backend_params": {...}}.  Emulator
     adapters live in qopt.run (yesterday's toolkit); only the thin dispatch
     is here so the labels in the record are explicit."""
@@ -73,6 +75,12 @@ def run_backend(seq, backend: str, shots: int, seed: int, bond_dim: int = 64, dt
         except Exception:  # noqa: BLE001
             peak = None
         info.update(dt_ns=dt, precision=precision, bond_dim=bond_dim, peak_bond_dim=peak, version=emu_mps.__version__)
+    elif backend == "numpy-sv":
+        from . import svsim
+        counts, prob = svsim.emulate(seq, shots=shots, seed=seed, dt_ns=dt_sv)
+        info.update(dt_ns=dt_sv, seed=seed, version="in-house exact state vector (cvrp.svsim)",
+                    exact_top_probabilities={format(int(i), f"0{int(round(np.log2(len(prob))))}b"): float(prob[i])
+                                             for i in np.argsort(prob)[::-1][:16]})
     else:
         raise ValueError(f"unknown emulator backend {backend!r}")
     info["wall_s"] = time.perf_counter() - t0
@@ -143,7 +151,31 @@ def run_one(inst: Instance, formulation: str, backend: str, shots: int, seed: in
     if problems:
         raise RuntimeError(f"sequence failed validation: {problems}")
 
+    # What the realised register minimises, classically (n <= 20): is the device's own argmin the model optimum?
+    realized: Dict[str, Any] = {}
+    if f.n_vars <= 20:
+        from .common import all_bitstrings
+        X = all_bitstrings(f.n_vars).astype(float)
+        Edev = -emb.delta_final * X.sum(1) + 0.5 * np.einsum("bi,ij,bj->b", X, emb.U, X)
+        order = np.argsort(Edev)
+        feas_mask = np.array([f.feasible(f.decode(x.astype(np.int8))) for x in X])
+        if mopt is None:
+            mopt = model_optimum(f)
+        objs = np.array([f.objective(f.decode(x.astype(np.int8))) if fm else np.inf for x, fm in zip(X, feas_mask)])
+        i0 = int(order[0])
+        best_feas_E = float(Edev[feas_mask].min()) if feas_mask.any() else None
+        best_infeas_E = float(Edev[~feas_mask].min()) if (~feas_mask).any() else None
+        realized = {
+            "argmin_bits": bits_to_str(X[i0].astype(int)),
+            "argmin_feasible": bool(feas_mask[i0]),
+            "argmin_is_model_optimum": bool(feas_mask[i0] and abs(objs[i0] - mopt.value) <= 1e-9),
+            "energy_gap_infeasible_minus_feasible": (best_infeas_E - best_feas_E) if (best_feas_E is not None and best_infeas_E is not None) else None,
+            "rank_of_model_optimum": int(np.where(np.isin(order, np.where(np.abs(objs - mopt.value) <= 1e-9)[0]))[0][0]) + 1
+                                      if np.any(np.abs(objs - mopt.value) <= 1e-9) else None,
+        }
+
     rec: Dict[str, Any] = {
+        "realized_register": realized,
         "instance": inst.name, "tier": inst.tier, "instance_seed": inst.seed,
         "formulation": f.describe(), "n_vars": f.n_vars, "atoms": emb.n,
         "method": method_label(formulation, backend, repair), "backend": backend, "seed": seed, "shots": shots,
@@ -155,6 +187,9 @@ def run_one(inst: Instance, formulation: str, backend: str, shots: int, seed: in
         print(f"[{inst.name}] {formulation}: {f.n_vars} vars -> {emb.n} atoms; alpha={emb.alpha:.3f} delta_final={emb.delta_final:.3f}")
         print(f"   fidelity rel_frob={fid.rel_frobenius_offdiag:.3f} worst pair={fid.worst_pair_rel_error:.3f} uniform h={fid.linear_terms_uniform} violations={fid.limit_violations}")
         print(f"   pulse {p.duration_ns} ns, Omega={p.omega:.3f}, delta {p.delta_init:.2f} -> {p.delta_final:.2f}; sequence validated")
+        if realized:
+            print(f"   realised register argmin feasible={realized['argmin_feasible']} is model optimum={realized['argmin_is_model_optimum']} "
+                  f"(model optimum at device-energy rank {realized['rank_of_model_optimum']}, gap infeas-feas {realized['energy_gap_infeasible_minus_feasible']})")
     if dry_run:
         rec["counts"] = None
         rec["wall_s"] = time.perf_counter() - t_start
@@ -219,7 +254,7 @@ def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--instance", required=True)
     ap.add_argument("--formulation", required=True)
-    ap.add_argument("--backend", default="random", help="qutip | emu-sv | emu-mps | random")
+    ap.add_argument("--backend", default="random", help="qutip | emu-sv | emu-mps | numpy-sv | random")
     ap.add_argument("--shots", type=int, default=500)
     ap.add_argument("--seed", type=int, default=0, help="run seed (embedding starts, random sampler)")
     ap.add_argument("--weights", default="", help="penalty weights, e.g. A=12,B=3 (default: formulation's rule)")

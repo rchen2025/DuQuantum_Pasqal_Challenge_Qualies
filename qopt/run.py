@@ -39,8 +39,11 @@ def emulate_qutip(seq, shots: int = 1000, sampling_rate: float = 0.1, with_modul
                   noise_model: Any = None) -> Dict[str, int]:
     from pulser.backend import BitStrings
     from pulser_simulation import QutipBackendV2, QutipConfig
-    cfg = QutipConfig(sampling_rate=sampling_rate, with_modulation=with_modulation, noise_model=noise_model,
-                      observables=[BitStrings(evaluation_times=[1.0], num_shots=shots)])
+    kw: Dict[str, Any] = {}
+    if noise_model is not None:   # QutipConfig dereferences noise_model before its base class turns None into NoiseModel()
+        kw["noise_model"] = noise_model
+    cfg = QutipConfig(sampling_rate=sampling_rate, with_modulation=with_modulation,
+                      observables=[BitStrings(evaluation_times=[1.0], num_shots=shots)], **kw)
     res = QutipBackendV2(seq, config=cfg).run()
     return dict(res.get_result("bitstrings", 1.0))
 
