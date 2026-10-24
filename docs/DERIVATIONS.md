@@ -888,6 +888,30 @@ gain is at the edge of the 500-shot sampling noise (±2 pp), so the committed de
 sweep and the slow-region rows stay in results.csv as a labelled option (`scan.py slow`).
 
 
+### 6.7 The hard bound δ_final < U_clique (found on tier M, 18:10 ET)
+
+Inside one customer's K-gon every pair of atoms sits at the side $s$ (5 µm), so the realised clique coupling
+is $U_{\text{clique}} = C_6/s^6 = 55.1$ rad/µs. At the end of the sweep (Ω = 0) the clique's own energies are
+
+$$E_0 = 0,\qquad E_1 = -\delta_f,\qquad E_2 = -2\delta_f + U_{\text{clique}},\qquad
+E_3 = -3\delta_f + 3U_{\text{clique}}\ (K=3),$$
+
+so the one-hot state $E_1$ is the clique ground state **only if** $0 < \delta_f < U_{\text{clique}}$. On tier S the
+one-hot-subspace fit of §5.7 returns δ_f = 33–38 rad/µs = 0.49–0.68 $U_{\text{clique}}$ (every cached S register,
+`scripts/fix_cached_delta.py --dry-run`), safely inside. On tier M the same fit is ill-conditioned (subspace
+residual 1.55 instead of 0.06–0.32) and ran to the device maximum, δ_f = 125.66 rad/µs = 2.28 $U_{\text{clique}}$:
+the sweep then *rewards* two excitations per triangle, and the measured as-is row (M_seed00, emu-mps χ = 32)
+had 0 of 500 shots decodable — not a feasibility failure of the encoding but a wrong end point of the sweep.
+The embedder now enforces the bound: when the fit leaves $(0, 0.9\,U_{\text{clique}})$ it falls back to
+$0.65\,U_{\text{clique}}$, the ratio the well-conditioned S fits land at; cached registers are migrated with
+the same rule and unchanged geometry (`scripts/fix_cached_delta.py`), so before/after rows share the register.
+Dry run on the M_seed00 register with δ_f = 35.8: the minimum single-flip defect gap turns from −70.4 to +19.4
+rad/µs (one-hot strings are again below their defects) while the model optimum's rank among one-hot strings
+stays 10 474 of 59 049 — the bound restores *decodability*, not solution quality, which is set by the distance
+couplings the plane cannot realise (Q-M1). Measured before/after: `|dfscale0.285` rows in results.csv (§6.8 below
+when they land).
+
+
 ## 7. Questions a judge will ask
 
 **Q1. Why cluster-first / route-second instead of the full CVRP?** The direct (customer, vehicle,
@@ -1018,6 +1042,15 @@ dominate the histogram, and the remaining shots are mostly the second-best clust
 on one-hot strings δ_f is a constant and only sets the single-flip defect gaps; the real cross couplings make
 dropping an excitation cheaper than the zero-cross-term algebra assumes, so the fit raises δ_f. The scan
 confirms ×1 is the best of the three multipliers tried. → §5.7, §6.6.
+
+**Q-M2. Your tier-M row had zero decodable shots — is one-hot simply unrealisable at 30 atoms?** No; that row
+had δ_f = 125.66 rad/µs, 2.3× the clique coupling, so the sweep ended in a regime where two excitations per
+triangle are cheaper than one (§6.7). The bound δ_f < U_clique is a physics requirement we had not written down
+because the tier-S fits never violated it. With δ_f = 0.65 U_clique the same register is one-hot at its device
+ground state (defect gap +19.4). What *is* unrealisable at K = 3 is the ordering of the one-hot strings by the
+distance couplings (optimum at rank ~10 000), so the honest tier-M statement is: the constraints embed, the
+objective does not. qubo-solver's own pipeline on the same instance (BLaDE register, χ = 32) shows the same
+split — 99 % one-hot shots, 1.6 % capacity-feasible, best feasible 72 % above the model optimum. → §6.7, results.csv.
 
 **Q-emb1. Your full-matrix fidelity went from ≈0.95 to ≈0.2–0.3 — did you fix the embedding or the metric?** Neither; we changed
 what we ask the register to reproduce. The full-matrix error is the brief's formula and we still report it,

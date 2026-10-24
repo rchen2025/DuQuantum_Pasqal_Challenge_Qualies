@@ -424,6 +424,16 @@ def embed_onehot(J: np.ndarray, h: np.ndarray, N: int, K: int, device: Any = Non
     delta_final = float(delta_fit)
     notes.append(f"delta_final fitted to {delta_final:.4g} rad/µs (QUBO algebra value alpha*A = {-alpha * h_eff:.4g}); "
                  f"it is constant on the one-hot subspace and only sets the single-flip defect gaps")
+    # Physics bound (DERIVATIONS §6.7): inside one K-gon a single excitation costs -delta_final and a double one
+    # -2 delta_final + U_clique, so one-hot strings are the clique ground states only if 0 < delta_final < U_clique.
+    # On tier M the subspace fit degenerates (residual > 1) and ran to the device maximum, 2.3x U_clique: every
+    # triangle then prefers two excitations and no shot decodes.  When the fit leaves (0, 0.9 U_clique) we fall
+    # back to 0.65 U_clique, the ratio the well-conditioned tier-S fits land at (35-38 rad/us for U = 55.4).
+    U_clique = C6 / side ** 6
+    if not (0.0 < delta_final < 0.9 * U_clique):
+        notes.append(f"delta_final {delta_final:.4g} outside (0, 0.9 U_clique = {0.9 * U_clique:.4g}): one-hot strings would "
+                     f"not be the clique ground states; set to 0.65 U_clique = {0.65 * U_clique:.4g} rad/µs")
+        delta_final = 0.65 * U_clique
     dpen = defect_penalty(pts, delta_final)
     notes.append(f"single-flip defect shortfall (0 = every one-bit defect of every one-hot string sits >= half the "
                  f"model's penalty gap above it): {dpen:.4g}")
