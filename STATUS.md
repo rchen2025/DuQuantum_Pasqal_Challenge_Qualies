@@ -1,6 +1,32 @@
-# STATUS — Sat 2026-10-24, 15:00 ET (hackathon day; freeze Sun 11:00 ET)
+# STATUS — Sat 2026-10-24, 15:50 ET (hackathon day; freeze Sun 11:00 ET)
 
-**What changed and why.** M1 is in (3 tier-S seeds, `onehot-ub` on qutip / emu-sv / our exact state-vector
+**What changed and why.** M2 is through its three steps on tier S. (1) Embedding: the structure-aware
+polygon registers are now cached and committed (`embeddings/`), so Windows (qutip) and the sandbox
+(numpy-sv) sample the *same* register and agree to sampling noise; P(reach model optimum) with the baseline
+pulse is 0.90 / 0.84 / 0.65 on S_seed00/01/04 (generic embedder: 0.12 / 0.07 / 0.03; random: 0.0075).
+(2) Weights: a 12-point scan of multipliers on A and λ₂ shows no trend — the embedding optimiser's choice of
+local minimum moves P(reach) more than a factor 2 on either weight — so the weights stay exactly as MODEL.md
+states them (DERIVATIONS §4.1). (3) Pulse: duration and Ω scale have clean monotone trends; **T = 5800 ns,
+Ω = 0.75·Ω_max** gives P(reach) 0.96 / 0.95 / 0.89 and feasibility 0.98 (DERIVATIONS §6.6); δ_f and
+slow-region scans are running now. A fresh-context reviewer found no blockers (details below); its main
+catch — qubo-solver's classical SA is a single-start greedy descent at T₀ = 5 — is fixed with a
+stated-parameter SA path, and `qubosolver-tabu` (finds the optimum on 3/3) is the honest classical row.
+qubo-solver's quantum pipeline (BLaDE + local_energy_scale, 5940 ns) reaches 0.78 / 0.78 / 0.00 on the same
+instances — a strong baseline that ours now beats on all three seeds.
+
+**Bad news for M/L, to decide at Gate 2:** the one-hot rook's graph does not embed for K = 3 (tier M, 30
+atoms). With 5 µm triangles the one-hot-subspace fit residual is 38 (S: 0.15–0.32), the single-flip
+defects sit *below* their parents and the model optimum ranks 10 000th among one-hot strings; opening the
+polygons to 6–10 µm (lower energy scale) does not help (residual 0.86–0.95, rank ≥ 1279, register radius at
+the 38 µm limit). Cause: K copies 5 µm apart cannot be far from a neighbouring customer's K copies, so the
+cross-vehicle couplings are of the order of the wanted ones and strongly anisotropic — exactly the brief's §4
+warning, and the A rule pins the clique/objective coupling ratio to ≈ 1.5 in distance. Options for the
+overnight run: (a) run M on emu-mps anyway and report the measured (poor) feasibility and gaps honestly with
+the realised-register diagnostics; (b) a K = 2 decomposition for M/L (hierarchical bisection) — a model
+change, so your call; (c) Track B on tier S only. Timing (`docs/EMU_CALIBRATION.md`): emu-sv 20 atoms 167 s,
+emu-mps 30 atoms χ = 32 ≈ 215 s per 2000 ns, 100 shots — a 5800 ns, 500-shot M run is ≈ 10–15 min.
+
+**Previous entry (15:00 ET).** M1 is in (3 tier-S seeds, `onehot-ub` on qutip / emu-sv / our exact state-vector
 emulator, plus the random sampler; all three emulators agree within sampling noise; Windows pytest is fully
 green) and M2 step 1 — embedding fidelity — produced the biggest jump of the day. The generic embedder cannot
 realise the one-hot rook's graph (cross-vehicle couplings come out as strong as the wanted ones, rel. Frobenius
