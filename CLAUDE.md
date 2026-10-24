@@ -1,68 +1,59 @@
-# qhack — analog neutral-atom QUBO optimisation on the Pasqal stack
+# qhack — Pasqal challenge: CVRP clustering on an analog neutral-atom device (Track A)
 
-One-day hackathon toolkit. The problem arrives on the day; this repo makes the
-day about **modeling → embedding → tuning**, not plumbing. Read this file, then
-`docs/STACK.md`; module-level docstrings have the conventions.
+Hackathon repo. The challenge brief is `docs/CHALLENGE.pdf` (brief v3.0, 2026-10-24).
+**Read `docs/DERIVATIONS.md` before touching any model, weight, embedding or pulse code: it is the
+single source of truth; code follows it, never the reverse.** `STATUS.md` says where we are.
 
 ## Commands
 ```bash
-pip install -e ".[all]"            # or: pip install -r requirements.txt   (venv already has the stack)
-cp .env.example .env               # fill PASQAL_USERNAME / PASQAL_PASSWORD / PASQAL_PROJECT_ID  — NEVER commit .env
-pytest -q                          # pure-numpy + pulser-core tests; emulator/qubo-solver tests skip if not installed
-pytest -q -m slow                  # the real emulator + qubo-solver tests (minutes)
-python -m qopt.demo                # toy knapsack: verify QUBO -> embed -> classical -> qubo-solver -> ours -> table + out/report.png
-python -m qopt.demo --backend qutip|emu-sv|emu-mps|mock --problem knapsack|setpacking|mis --device WeightedAnalogDevice --shots 500
-python scripts/device_limits.py [DeviceName] [--json dev.json] [--cloud FRESNEL_CAN1]   # print every device constraint
-QOPT_DEVICE=AnalogDevice python -m qopt.demo                                           # device via env var
+# Windows hackathon venv (..\pasqal, Python 3.14) has the full stack; this is the only place emulators run.
+python -m pip install -r requirements.txt                  # exact pins
+pytest -q                                                   # all tests (emulator tests skip if torch/qutip missing)
+python scripts/run_tests.py [pattern]                       # pytest stand-in for sandboxes without pytest
+python scripts/device_limits.py --assert-brief              # pulser AnalogDevice == brief §3.1 table (gate)
+python -m cvrp.instances --out instances/                   # D3: generate seeded instances (certificate first)
+python -m cvrp.reference instances/                         # D3: exact references + SA cross-check -> JSON
+python -m cvrp.validator instances/                         # D3 gate: every §2 assumption + certificate + reference
+python scripts/variable_count.py --write-md                 # D2: §4 table into docs/MODEL_WRITEUP.md (never typed)
+python -m cvrp.run --instance instances/S_seed00.json --formulation <name> --backend qutip --shots 500 --seed 0 --out out/
+python -m cvrp.results out/ -o results.csv                  # D4
+python -m cvrp.baseline ...                                 # qubo-solver quantum + classical, same scoring
+make demo | make deliverables | make report                 # end-to-end on one tier-S seed | D1–D5 checklist | report.pdf (<= 4 pages)
+scripts/win_runner.bat                                      # Windows job runner: drops .cmd into .runner/queue, logs in .runner/out
 ```
 
-## Device limits (pulser 1.9.1, read programmatically — re-run device_limits.py on the organizers' device)
-| | WeightedAnalogDevice (DMM, default) | AnalogDevice | DigitalAnalogDevice |
-|---|---|---|---|
-| C6 (rad/µs·µm⁶) | 12 241 414.5 | 865 723 | 5 420 158.5 |
-| min dist / max radial / max atoms | 5 µm / 80 µm / 256 | 5 / 38 / 80 | 4 / 50 / 100 |
-| Ω_max, min avg Ω | 2π·2 = 12.57 rad/µs, 2π·0.3 | 2π·2, 0 | 2π·2.5, 0 |
-| \|δ_global\|_max | 2π·10 = 62.8 | 2π·20 | 2π·20 |
-| DMM (local δ ≤ 0) | per-atom ≥ −62.8, total ≥ −6283, min_nonzero_w·avg\|δ\| ≥ 0.628 | **none** | ≥ −125.7 / −12566 |
-| max sequence duration / runs | 6000 ns / 500 | 6000 / 2000 | – |
-| clock / min pulse | 4 ns / 16 ns | 4 / 16 | 4 / 16 |
-| layout | required, 150–512 traps, filling 0.35–0.5 above 150 traps | required (triangular 61) | required |
-| U at min distance | 783 rad/µs | 55 | 1324 |
+## Device (Pulser 1.9.1 `AnalogDevice`, asserted by `scripts/device_limits.py --assert-brief`)
+| max atoms | min separation | max register radius | Ω_max | \|δ\| max (global, no DMM) | max sequence | C6/ħ |
+|---|---|---|---|---|---|---|
+| 80 | 5 µm | 38 µm | 12.566 rad/µs (2π·2 MHz) | 125.66 rad/µs (2π·20 MHz) | 6000 ns | 8.657e5 rad/µs·µm⁶ |
 
-Units everywhere: rad/µs (2π·MHz), µm, int ns. δ<0 favours ground, δ>0 favours Rydberg, interactions repulsive (+C6/r⁶).
+U at 5 µm = 55.4 rad/µs. Clock 4 ns, min pulse 16 ns. Layout required (`Register.with_automatic_layout`).
+Units everywhere: rad/µs, µm, int ns. δ<0 favours |g⟩, δ>0 favours |r⟩; interactions are repulsive (+C6/r⁶).
 
-## Module map (`qopt/`)
-| module | what | key API |
-|---|---|---|
-| `model.py` | Problem → QUBO: penalty selection, slack expansion for ≤/≥, brute-force checker | `Problem`, `to_qubo()`, `auto_penalty()`, `brute_force_verify()`, `knapsack/set_packing/max_independent_set` |
-| `classical.py` | ground truth + bar to beat | `solve_exact` (brute force ≤20, MILP via scipy/HiGHS), `simulated_annealing`, `tabu_search`, `solve_best`, `greedy_descent` |
-| `embed.py` | QUBO → register + DMM weights; error report | `DeviceLimits.from_pulser_device`, `embed_qubo()` → `Embedding(.coords, .weights, .decode, .report, .register())`, `realized_qubo()` |
-| `schedule.py` | adiabatic Ω ramp + δ sweep + DMM within limits; scan/optimise | `Schedule.default_for(emb)`, `build_sequence(emb, sched)`, `final_hamiltonian_from_sequence`, `scan`, `optimize` |
-| `run.py` | sequence → emulator/cloud counts → decode → repair → score | `run_pipeline(problem, qubo, emb, sched, backend=…)`, `score_counts`, `repair`, `cloud_submit/cloud_fetch`, `mps_convergence_check`, `make_evaluator` |
-| `baseline.py` | same QUBO through Pasqal's qubo-solver, same scorer | `run_qubo_solver(problem, qubo, mode="functional"|"solver")` |
-| `report.py` | register plot (excited atoms), embedding-error heatmap, waveforms, score vs shots, table | `make_report`, `comparison_table` |
-| `demo.py` | end-to-end on a toy problem | `python -m qopt.demo` |
+## Package map (`cvrp/`)
+| module | what |
+|---|---|
+| `common.py` | `Instance` (JSON io), `Formulation` ABC (Q, decode, feasible, objective, cluster_cost), exact TSP (Held–Karp), `route_exactly`, `clustering_of`, `gap_percent` |
+| `instances.py` / `validator.py` | tiers S/M/L, seeded, certificate-first; validator = D3 gate |
+| `exact.py` / `reference.py` | exact set-partition DP (all tiers, proven optimum, #optima mod relabeling) + SA cross-check; writes `reference` into instance JSON |
+| `model.py` + `formulations/` | registry, `brute_force_check` (feasible fraction, argmin decodes feasible?, gap landscape, weight half/double) ; `textbook` = throwaway one-hot+slack for plumbing |
+| `embed.py` | QUBO → register on AnalogDevice: refuses J≤0, enforces 5/38/80, fidelity = rel. Frobenius off-diag + worst pair, uniform-linear check |
+| `pulse.py` | three-point Ω ramp + linear δ sweep (+ slow region), validated by Pulser's `Sequence` |
+| `run.py` | formulation+embedding+pulse+backend → bitstrings → decode → feasible/infeasible → optional *labeled* repair → §9 metrics → run-record JSON |
+| `results.py` / `baseline.py` / `report.py` | results.csv (D4) / qubo-solver baselines / figures |
+| `qopt/` | yesterday's generic toolkit (reused where it fits: position optimiser, emulator adapters). Not the deliverable. |
 
-Conventions: QUBO energy `E = xᵀQx + offset`, Q symmetric; `h_i = Q_ii`, `J_ij = 2Q_ij`. Embedding realises `U_ij = α J_ij` (only J>0 — negative couplings are dropped and reported), `δ_i = −α h_i` via global δ + DMM (`w_i·δ_dmm ≤ 0`). Bitstring index i = atom `q{i}` = QUBO variable i (slack atoms included; `Embedding.decode` drops them). `'1'` = Rydberg = x_i = 1.
+## Rules (non-negotiable)
+- **Every coupling positive.** `cvrp.embed.embed` raises on any J_ij < 0. Zero couplings are only approximated (far atoms) and reported.
+- **Every sequence passes Pulser validation** (`Sequence` on `AnalogDevice` + `to_abstract_repr()`); limits are read from the device object, never hard-coded.
+- **Every gap is computed on a feasible decode.** Infeasible shots never contribute a cost. Repair, when used, is a separate labeled method (`repair=greedy`), never silently mixed in.
+- **Never mean cost.** Score shots by best gap, feasibility rate, P(gap ≤ ε) (brief §8.2, §9.4).
+- **Vehicles identical → compare clusterings as sets** of customer groups (`clustering_of`), for #optima and P(reach reference).
+- **DERIVATIONS.md before code.** A weight, encoding or pulse change updates `docs/DERIVATIONS.md` in the same commit.
+- **Numbers in docs come from scripts** (`variable_count.py`, `results.py`), never typed.
+- `STATUS.md` opens with one plain-language paragraph (what changed, why). `docs/DID_NOT_WORK.md`: one honest sentence per failure. `docs/AI_USE.md`: what AI did, per deliverable.
+- Never commit credentials; `.env` is ignored. `.runner/`, `out/` are ignored.
 
-## Workflow on the day
-1. **Model** in `model.Problem`; `brute_force_verify` on a shrunken instance (≤ 20 QUBO vars) before anything else. Keep penalties minimal (`auto_penalty`); dense penalty terms (equality/knapsack sums) create rank-1 all-to-all couplings that 1/r⁶ in 2D cannot reproduce (rel. error ~0.5) — prefer native graph-structured formulations (MIS/MWIS, conflict graphs), native inequalities via sparse slacks, or decompose.
-2. **Embed** with `embed_qubo(qubo, DeviceLimits.from_pulser_device(dev))`; look at `report.summary()`: `rel_error_offdiag`, `dropped_negative_mass`, `ground_state_preserved`, `limit_violations`. Compare with qubo-solver's `embedding_rel_error` from `baseline.run_qubo_solver`.
-3. **Schedule**: `Schedule.default_for(emb)` then `schedule.scan/optimize` over `duration`, `omega_max`, `delta_init`, `sweep_shape`, `dmm_shape` using `run.make_evaluator(metric="p_optimal_repaired")` on qutip/emu-sv.
-4. **Run & score** with `run_pipeline`; `score.table()`; repair is on by default (constraint-check + greedy fix + feasible descent).
-5. **Baseline** with `baseline.run_qubo_solver` (functional = raw counts through our scorer; solver = their post-processed solution).
-6. **Cloud/QPU**: `run_pipeline(..., backend="cloud-mps"|"cloud-sv"|"cloud-free"|"qpu")` submits async and writes `jobs/*.json`; `run.cloud_fetch(batch_id)` later; `mimic_qpu=True` validates like the QPU; QPU needs `reg.with_automatic_layout(device)` (done in `Embedding.register`).
-
-## Emulator ceilings
-qutip (`QutipBackendV2`, `sampling_rate=0.1`): ≤ 12–14 atoms. emu-sv: 15–22 on CPU, ~25 GPU (exact). emu-mps: 25–80+ but approximate — trust only for 1D/quasi-1D, low entanglement; always `run.mps_convergence_check` (TV distance < 0.05 between precision 1e-5/χ and 1e-6/2χ) and read `results.statistics[-1]["max_bond_dimension"]`. Cloud: EMU_FREE ≤12, EMU_SV ≤25, EMU_MPS ≤80; FRESNEL_CAN1 ≤1000 runs/job, 6000 ns. `auto` backend picks by atom count.
-
-## Rules
-- **Never commit credentials.** Cloud creds come from env vars only (`.env` is git-ignored). Job ids go to `jobs/` (ignored).
-- Every modelling change must pass `brute_force_verify` on a tiny instance (tests enforce this on the toy problems).
-- Device numbers are read from Pulser objects at runtime; the tables above are a cached snapshot (`tests/test_embed.py::test_known_limits_match_pulser_if_installed` checks they match).
-- Scoring is shared: anything compared in the table goes through `run.score_counts` (same decode, same repair, same classical reference).
-- `--backend mock` samples a Boltzmann distribution of the realised final Hamiltonian — for exercising the pipeline only, never for results.
-- Research notes with links: `docs/STACK.md`, `docs/api/*.md` (from installed source), `docs/research/*.md` (web).
-
-## Agents (`.claude/agents/`)
-`stack-docs` (read-only researcher), `modeler`, `embedder`, `tuner`, `baseline`, `reviewer` (fresh context: diff + requirements, correctness/scoring gaps only).
+## Gates
+- **Gate 1**: the real formulation arrives in `docs/MODEL.md` → write its DERIVATIONS.md §4 first, then `cvrp/formulations/<name>.py`, regenerate the D2 table, run M1 (3 tier-S seeds: ours + qubo-solver + random sampler), reviewer pass, then M2 (embedding fidelity → weights via brute-force checker → pulse scan). Before/after rows for every change.
+- **Gate 2**: Track B decision, overnight run (`make deliverables` at the end).
