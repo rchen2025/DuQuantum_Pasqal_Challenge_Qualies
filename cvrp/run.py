@@ -43,6 +43,7 @@ from .model import get_formulation
 from .pulse import PulseParams, build_sequence, default_for, validate
 
 EMULATORS = ("qutip", "emu-sv", "emu-mps", "numpy-sv")
+EMBEDDING_CACHE = "embeddings"
 
 
 # --------------------------------------------------------------------------- #
@@ -142,15 +143,31 @@ def run_one(inst: Instance, formulation: str, backend: str, shots: int, seed: in
     # --- embedding (raises on negative couplings) ------------------------- #
     embed_kw = dict(embed_kw or {})
     embedder = embed_kw.pop("embedder", "generic")
-    if embedder == "generic":
-        emb: Embedding = embed(J, h, seed=seed, **embed_kw)
-    elif embedder == "polygons":
-        from .embed_onehot import embed_onehot
-        if f.n_vars != inst.N * inst.K:
-            raise ValueError("embedder=polygons needs a one-hot formulation with N*K variables")
-        emb = embed_onehot(J, h, inst.N, inst.K, seed=seed, **embed_kw)
-    else:
-        raise ValueError(f"unknown embedder {embedder!r} (generic | polygons)")
+    cache_dir = embed_kw.pop("cache_dir", EMBEDDING_CACHE)
+    # The position optimiser is seeded but not bit-identical across platforms (BLAS / scipy versions), so the
+    # register of every headline row is cached under embeddings/ and committed; a run reuses it when the
+    # instance, formulation, weights, embedder and seed match.  Delete the file to force a recomputation.
+    wkey = "_".join(f"{k}={v:.6g}" for k, v in sorted(f.weights.items()))
+    cache_file = (Path(cache_dir) / f"{inst.name}__{formulation}__{wkey}__{embedder}__seed{seed}.json") if cache_dir else None
+    emb: Optional[Embedding] = None
+    if cache_file is not None and cache_file.exists():
+        cached = json.loads(cache_file.read_text())
+        if np.allclose(np.asarray(cached["J_target"]), J, rtol=1e-9, atol=1e-9) and np.allclose(np.asarray(cached["h"]), h):
+            emb = Embedding.from_dict(cached)
+            emb.fidelity.notes.append(f"register loaded from cache {cache_file.name}")
+    if emb is None:
+        if embedder == "generic":
+            emb = embed(J, h, seed=seed, **embed_kw)
+        elif embedder == "polygons":
+            from .embed_onehot import embed_onehot
+            if f.n_vars != inst.N * inst.K:
+                raise ValueError("embedder=polygons needs a one-hot formulation with N*K variables")
+            emb = embed_onehot(J, h, inst.N, inst.K, seed=seed, **embed_kw)
+        else:
+            raise ValueError(f"unknown embedder {embedder!r} (generic | polygons)")
+        if cache_file is not None:
+            cache_file.parent.mkdir(parents=True, exist_ok=True)
+            cache_file.write_text(json.dumps(emb.to_dict(), indent=1, default=_json_default))
     fid = emb.fidelity
     device_faithful = bool(fid.linear_terms_uniform and not fid.limit_violations)
 
@@ -272,6 +289,7 @@ def main(argv=None):
     ap.add_argument("--slow", nargs=3, type=float, metavar=("CENTRE", "WIDTH", "FACTOR"), default=None)
     ap.add_argument("--bond-dim", type=int, default=64)
     ap.add_argument("--embedder", default="generic", help="generic | polygons (structure-aware one-hot embedding, cvrp.embed_onehot)")
+    ap.add_argument("--embedding-cache", default=EMBEDDING_CACHE, help="directory of cached registers ('' to disable)")
     ap.add_argument("--repair", default="none", help="none | energy-descent (labelled separately)")
     ap.add_argument("--counts", default=None, help="JSON file bitstring->count to score instead of sampling")
     ap.add_argument("--dry-run", action="store_true")
@@ -287,7 +305,7 @@ def main(argv=None):
     counts = json.loads(Path(a.counts).read_text()) if a.counts else None
     rec = run_one(inst, a.formulation, a.backend, a.shots, a.seed, weights=parse_kv(a.weights),
                   pulse_overrides=pulse_over, repair=a.repair, bond_dim=a.bond_dim, counts=counts, dry_run=a.dry_run,
-                  embed_kw={"embedder": a.embedder})
+                  embed_kw={"embedder": a.embedder, "cache_dir": a.embedding_cache or None})
     pth = save_record(rec, a.out)
     print(f"record -> {pth}")
 

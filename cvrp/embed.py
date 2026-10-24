@@ -191,6 +191,19 @@ class Embedding:
         x = np.asarray(x, float)
         return float(-self.delta_final * x.sum() + 0.5 * x @ self.U @ x)
 
+    @classmethod
+    def from_dict(cls, d: Dict[str, Any]) -> "Embedding":
+        """Inverse of to_dict (used by the embedding cache so a register is reproducible bit for bit)."""
+        fd = dict(d["fidelity"])
+        for k in ("worst_pair", "spurious_pair"):
+            if fd.get(k) is not None:
+                fd[k] = tuple(fd[k])
+        known = {f.name for f in FidelityReport.__dataclass_fields__.values()}
+        fid = FidelityReport(**{k: v for k, v in fd.items() if k in known})
+        return cls(coords=np.asarray(d["coords_um"], float), alpha=float(d["alpha"]), U=np.asarray(d["U_realized"], float),
+                   J_target=np.asarray(d["J_target"], float), h=np.asarray(d["h"], float), delta_final=float(d["delta_final"]),
+                   device=d["device"], fidelity=fid, C6=float(d["C6"]))
+
     def to_dict(self) -> Dict[str, Any]:
         return {
             "device": self.device,
