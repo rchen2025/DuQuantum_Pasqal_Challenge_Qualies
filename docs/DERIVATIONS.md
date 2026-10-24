@@ -703,8 +703,11 @@ polygons ≥ 5 µm apart and the register inside 38 µm. **δ_f is a free fit pa
 constant on the one-hot subspace, so it only sets the defect gaps; it starts at the QUBO value αA
 (27.5 rad/µs) and lands a little above it (table) because the real cross couplings make an excitation cheaper
 to drop than the algebra with zero cross terms assumes. All limits still come from the device object; the
-sequence is still validated by Pulser. The optimiser is seeded but not bit-identical across platforms, so the
-register of every reported row is cached in `embeddings/` and committed (`docs/DID_NOT_WORK.md`).
+sequence is still validated by Pulser. The optimiser is seeded but not bit-identical across platforms — and on
+tier M not even across two concurrent runs on the same machine (M_seed01: two registers with δ_f 125.7 / 24.0 and
+optimum rank 1 114 / 12 966 from the same seed, 18:50 ET) — so the register of every reported row is cached in
+`embeddings/` and committed, every run loads it (`register loaded from cache` in the record notes), and a row
+whose register differs from the cache is re-run rather than reported (`docs/DID_NOT_WORK.md`).
 
 **What we report, per run record (`embedding.fidelity`, `realized_register`) and in results.csv.** (1) The
 brief's fidelity formula on the full matrix — for this register it is dominated by the exact clique entries
