@@ -22,7 +22,6 @@ HEADLINE_METHODS = [
     ("onehot-ub[emb=polygons]+emu-sv", "ours", "ours"),
     ("onehot-ub[emb=polygons]+emu-mps", "ours (emu-mps)", "ours"),
     ("onehot-ub[emb=polygons]+numpy-sv", "ours (in-house SV)", "ours"),
-    ("onehot-ub[emb=generic]+qutip", "ours, generic emb.", "generic"),
     ("onehot-ub-tight[emb=polygons]+qutip", "ours, tight A (ablation)", "tight"),
     ("onehot-ub-tight[emb=polygons]+numpy-sv", "ours, tight A (ablation, SV)", "tight"),
     ("onehot-ub[emb=polygons]+random-onehot", "random assignments (one-hot)", "rndoh"),

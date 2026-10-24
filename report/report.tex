@@ -157,7 +157,7 @@ for M/L with the bond dimension recorded.
 
 \begin{figure}
 \centering
-\includegraphics[width=0.55\textwidth,height=\textheight]{../report/figures/pulse_scan.png}
+\includegraphics[width=0.42\textwidth,height=\textheight]{../report/figures/pulse_scan.png}
 \caption{Pulse scan on three tier-S instances (in-house SV, 500 shots):
 P(reach model optimum) and feasibility vs duration for three Ω scales.}
 \end{figure}
@@ -203,8 +203,6 @@ backend
 \endlastfoot
 S\_seed00 & ours & 1.00 & 0.0 \% & 0.0 \% & 0.94 & 0.94 & 0.26 &
 qutip \\
-S\_seed00 & ours, generic emb. & 0.22 & 0.0 \% & 0.0 \% & 0.13 & 0.13 &
-0.95 & qutip \\
 S\_seed00 & ours, tight A (ablation, SV) & 1.00 & 0.0 \% & 0.0 \% & 0.03
 & 0.03 & 0.31 & numpy-sv \\
 S\_seed00 & random assignments (one-hot) & 0.63 & 0.0 \% & 0.0 \% & 0.12
@@ -217,8 +215,6 @@ S\_seed00 & random sampler & 0.04 & 0.0 \% & 0.0 \% & 0.01 & 0.01 & 0.95
 & random \\
 S\_seed01 & ours & 0.95 & 0.0 \% & 0.0 \% & 0.95 & 0.95 & 0.21 &
 qutip \\
-S\_seed01 & ours, generic emb. & 0.09 & 0.0 \% & 0.0 \% & 0.07 & 0.07 &
-0.94 & qutip \\
 S\_seed01 & ours, tight A (ablation, SV) & 0.56 & 0.0 \% & 0.0 \% & 0.56
 & 0.56 & 0.29 & numpy-sv \\
 S\_seed01 & random assignments (one-hot) & 0.25 & 0.0 \% & 0.0 \% & 0.12
@@ -247,8 +243,6 @@ S\_seed03 & random sampler & 0.05 & 0.0 \% & 15.6 \% & 0.01 & 0.01 &
 0.29 & random \\
 S\_seed04 & ours & 1.00 & 0.0 \% & 21.7 \% & 0.02 & 0.89 & 0.32 &
 qutip \\
-S\_seed04 & ours, generic emb. & 0.06 & 0.0 \% & 21.7 \% & 0.00 & 0.03 &
-0.95 & qutip \\
 S\_seed04 & ours, tight A (ablation, SV) & 0.99 & 0.0 \% & 21.7 \% &
 0.02 & 0.96 & 0.34 & numpy-sv \\
 S\_seed04 & random assignments (one-hot) & 0.62 & 0.0 \% & 21.7 \% &
@@ -333,13 +327,12 @@ stated-parameter SA instead).
 \hypertarget{what-did-not-work}{%
 \section{6. What did not work}\label{what-did-not-work}}
 
-See \texttt{docs/DID\_NOT\_WORK.md} (one sentence each): no PyPI/GitHub
-from the sandboxes (Windows job runner instead); CPLEX not installable;
-a typed number caught by review; qubo-solver's default SA; the emu-mps
-calibration job blocking the queue; cross-platform non-reproducibility
-of the embedding optimiser (fixed by committing registers); the one-hot
-rook's graph not embedding for \(K=3\) (tier M), which is the honest
-limit of this encoding on this device.
+\texttt{docs/DID\_NOT\_WORK.md}, one sentence each: no PyPI from the
+sandboxes; CPLEX not installable; a typed number caught by review;
+qubo-solver's default SA; a blocking calibration job; non-reproducible
+embedding optimiser (fixed by committing registers); the tight-\(A\)
+ablation; and the one-hot rook's graph not embedding for \(K=3\) --- the
+honest limit of this encoding on this device.
 
 \hypertarget{use-of-ai}{%
 \section{7. Use of AI}\label{use-of-ai}}

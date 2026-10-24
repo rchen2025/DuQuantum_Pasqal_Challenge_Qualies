@@ -76,7 +76,7 @@ $\delta_f\times\{0.8,1,1.25\}$ peaks at the fitted value. **Chosen: 5800 ns, $0.
 and an in-house exact state-vector integrator built from Pulser's own samples for scans (agrees with qutip to sampling
 noise, TV ≈ 0.05 at 500 shots); emu-mps for M/L with the bond dimension recorded.
 
-![Pulse scan on three tier-S instances (in-house SV, 500 shots): P(reach model optimum) and feasibility vs duration for three Ω scales.](../report/figures/pulse_scan.png){width=55%}
+![Pulse scan on three tier-S instances (in-house SV, 500 shots): P(reach model optimum) and feasibility vs duration for three Ω scales.](../report/figures/pulse_scan.png){width=42%}
 
 
 # 5. Results (brief Table 3; `results.csv`, `python -m cvrp.results`)
@@ -85,14 +85,12 @@ noise, TV ≈ 0.05 at 500 shots); emu-mps for M/L with the bond dimension record
 | instance | method | feas. | model gap | CVRP gap | P(reach C*) | P(gap≤5%) | fidelity | backend |
 |---|---|---|---|---|---|---|---|---|
 | S_seed00 | ours | 1.00 | 0.0 % | 0.0 % | 0.94 | 0.94 | 0.26 | qutip |
-| S_seed00 | ours, generic emb. | 0.22 | 0.0 % | 0.0 % | 0.13 | 0.13 | 0.95 | qutip |
 | S_seed00 | ours, tight A (ablation, SV) | 1.00 | 0.0 % | 0.0 % | 0.03 | 0.03 | 0.31 | numpy-sv |
 | S_seed00 | random assignments (one-hot) | 0.63 | 0.0 % | 0.0 % | 0.12 | 0.12 | 0.26 | random-onehot |
 | S_seed00 | qubo-solver quantum | 1.00 | 0.0 % | 0.0 % | 0.78 | 0.78 | 0.12 | qs-quantum |
 | S_seed00 | qubo-solver tabu | 1.00 | 0.0 % | 0.0 % | 1.00 | 1.00 | undef. | qs-classical |
 | S_seed00 | random sampler | 0.04 | 0.0 % | 0.0 % | 0.01 | 0.01 | 0.95 | random |
 | S_seed01 | ours | 0.95 | 0.0 % | 0.0 % | 0.95 | 0.95 | 0.21 | qutip |
-| S_seed01 | ours, generic emb. | 0.09 | 0.0 % | 0.0 % | 0.07 | 0.07 | 0.94 | qutip |
 | S_seed01 | ours, tight A (ablation, SV) | 0.56 | 0.0 % | 0.0 % | 0.56 | 0.56 | 0.29 | numpy-sv |
 | S_seed01 | random assignments (one-hot) | 0.25 | 0.0 % | 0.0 % | 0.12 | 0.12 | 0.21 | random-onehot |
 | S_seed01 | qubo-solver quantum | 0.80 | 0.0 % | 0.0 % | 0.78 | 0.78 | 0.16 | qs-quantum |
@@ -107,7 +105,6 @@ noise, TV ≈ 0.05 at 500 shots); emu-mps for M/L with the bond dimension record
 | S_seed03 | qubo-solver tabu | 1.00 | 0.0 % | 15.6 % | 0.00 | 1.00 | undef. | qs-classical |
 | S_seed03 | random sampler | 0.05 | 0.0 % | 15.6 % | 0.01 | 0.01 | 0.29 | random |
 | S_seed04 | ours | 1.00 | 0.0 % | 21.7 % | 0.02 | 0.89 | 0.32 | qutip |
-| S_seed04 | ours, generic emb. | 0.06 | 0.0 % | 21.7 % | 0.00 | 0.03 | 0.95 | qutip |
 | S_seed04 | ours, tight A (ablation, SV) | 0.99 | 0.0 % | 21.7 % | 0.02 | 0.96 | 0.34 | numpy-sv |
 | S_seed04 | random assignments (one-hot) | 0.62 | 0.0 % | 21.7 % | 0.11 | 0.13 | 0.32 | random-onehot |
 | S_seed04 | qubo-solver quantum | 1.00 | 27.3 % | 30.0 % | 0.00 | 0.00 | 0.19 | qs-quantum |
@@ -149,10 +146,10 @@ and its default SA path does not (a single-start greedy descent at $T_0=5$ — w
 
 # 6. What did not work
 
-See `docs/DID_NOT_WORK.md` (one sentence each): no PyPI/GitHub from the sandboxes (Windows job runner instead); CPLEX
-not installable; a typed number caught by review; qubo-solver's default SA; the emu-mps calibration job blocking the queue;
-cross-platform non-reproducibility of the embedding optimiser (fixed by committing registers); the one-hot rook's graph
-not embedding for $K=3$ (tier M), which is the honest limit of this encoding on this device.
+`docs/DID_NOT_WORK.md`, one sentence each: no PyPI from the sandboxes; CPLEX not installable; a typed number caught by
+review; qubo-solver's default SA; a blocking calibration job; non-reproducible embedding optimiser (fixed by committing
+registers); the tight-$A$ ablation; and the one-hot rook's graph not embedding for $K=3$ — the honest limit of this
+encoding on this device.
 
 # 7. Use of AI
 
