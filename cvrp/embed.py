@@ -109,6 +109,7 @@ class FidelityReport:
     subspace_rel_frobenius: Optional[float] = None
     subspace_worst_pair_rel_error: Optional[float] = None
     subspace_anisotropy: Optional[float] = None
+    subspace_same_vehicle_asymmetry: Optional[float] = None
 
     @property
     def ok(self) -> bool:

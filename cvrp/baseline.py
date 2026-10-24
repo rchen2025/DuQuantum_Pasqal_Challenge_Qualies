@@ -769,8 +769,14 @@ def run_quantum(inst: Instance, formulation: str, shots: int, seed: int,
 def run_classical(inst: Instance, formulation: str, seed: int, weights: Optional[Dict[str, float]] = None,
                   algorithm: str = "auto", sa_iters: int = 20000, time_limit: float = float("inf"),
                   max_bitstrings: int = 1, preprocessing: bool = True, postprocessing: bool = True,
-                  dry_run: bool = False, mopt: Optional[ModelOptimum] = None, verbose: bool = True) -> Dict[str, Any]:
-    """qubo-solver's classical solver on our QUBO; its best bitstring scored as ``{bits: 1}``."""
+                  dry_run: bool = False, mopt: Optional[ModelOptimum] = None, verbose: bool = True,
+                  sa_restarts: int = 10, sa_initial_temp: Optional[float] = None,
+                  sa_final_temp: Optional[float] = None) -> Dict[str, Any]:
+    """qubo-solver's classical solver on our QUBO; its best bitstring scored as ``{bits: 1}``.
+
+    simulated_annealing with ``sa_restarts > 0`` bypasses ``Solver`` and calls the annealer with stated
+    temperatures / restarts (method label ``qubosolver-sa-stated``); ``sa_restarts=0`` keeps qubo-solver's
+    own Solver path (T0 = 5, one start; label ``qubosolver-sa``)."""
     t0 = time.perf_counter()
     f = get_formulation(formulation, inst, **(weights or {}))
     Q = f.Q()
@@ -804,7 +810,28 @@ def run_classical(inst: Instance, formulation: str, seed: int, weights: Optional
         rec["wall_s"] = time.perf_counter() - t0
         return rec
     t1 = time.perf_counter()
-    solution = Solver(qs_inst, cfg).solve()
+    if algo == "simulated_annealing" and sa_restarts > 0:
+        # Stated-parameter SA (brief §9.3): qubo-solver's Solver path hides T0 = 5, T_f = 1e-3 and one start;
+        # at our energy scale (A ~ 1e2-1e3) that is a greedy descent from one random string.  We call the
+        # annealer directly with temperatures tied to the penalty scale and several seeded restarts.
+        import torch
+        from qubosolver.solving import simulated_annealing as qs_sa
+        A_scale = float(max(abs(v) for v in f.weights.values()) if f.weights else float(np.abs(Q).max()))
+        T0 = sa_initial_temp if sa_initial_temp is not None else A_scale
+        Tf = sa_final_temp if sa_final_temp is not None else max(1e-3, 1e-3 * A_scale)
+        gen = torch.Generator().manual_seed(int(seed))
+        solution = qs_sa.solve(qs_inst, starts=int(sa_restarts), merge=True, top_k=max(1, int(max_bitstrings)),
+                               max_iter=int(sa_iters), initial_temp=float(T0), final_temp=float(Tf), rng=gen)
+        rec["backend_params"].update({
+            "sa_initial_temp": float(T0), "sa_final_temp": float(Tf), "sa_alpha": "geometric, set by qubo-solver from (T0, Tf, max_iter)",
+            "max_iter": int(sa_iters), "sa_time_limit": None, "restarts": int(sa_restarts), "seeds": [int(seed)],
+            "note": "qubosolver.solving.simulated_annealing.solve called directly with stated parameters "
+                    f"(T0 = max weight = {T0:.4g}, Tf = {Tf:.4g}, {sa_restarts} restarts from torch.Generator(seed)); "
+                    "pre/post-processing not applied",
+        })
+        rec["method"] = method_label(formulation, "classical", classical_algorithm="sa-stated")
+    else:
+        solution = Solver(qs_inst, cfg).solve()
     rec["backend_params"]["wall_s"] = time.perf_counter() - t1
     if len(solution) == 0:
         raise ConventionError("qubo-solver classical solver returned an empty Solution")
@@ -862,6 +889,9 @@ def main(argv=None):
     # classical knobs
     ap.add_argument("--classical", default="auto", choices=CLASSICAL, help="auto = cplex if importable else simulated_annealing")
     ap.add_argument("--sa-iters", type=int, default=20000, help="max_iter for simulated_annealing / tabu_search")
+    ap.add_argument("--sa-restarts", type=int, default=10, help="stated-parameter SA restarts (0 = qubo-solver's own Solver SA path)")
+    ap.add_argument("--sa-T0", type=float, default=None, help="SA initial temperature (default: largest penalty weight)")
+    ap.add_argument("--sa-Tf", type=float, default=None, help="SA final temperature (default: 1e-3 * T0)")
     ap.add_argument("--time-limit", type=float, default=float("inf"))
     ap.add_argument("--no-classical-preprocessing", action="store_true")
     ap.add_argument("--no-classical-postprocessing", action="store_true")
@@ -884,7 +914,7 @@ def main(argv=None):
     if a.mode in ("classical", "both"):
         rec = run_classical(inst, a.formulation, a.seed, weights=weights, algorithm=a.classical, sa_iters=a.sa_iters,
                             time_limit=a.time_limit, preprocessing=not a.no_classical_preprocessing,
-                            postprocessing=not a.no_classical_postprocessing, dry_run=a.dry_run, mopt=mopt)
+                            postprocessing=not a.no_classical_postprocessing, dry_run=a.dry_run, mopt=mopt, sa_restarts=a.sa_restarts, sa_initial_temp=a.sa_T0, sa_final_temp=a.sa_Tf)
         if a.dry_run:
             print(json.dumps({k: rec[k] for k in ("method", "backend_params")}, indent=1, default=str))
         paths.append(save_record(rec, a.out))

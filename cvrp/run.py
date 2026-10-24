@@ -36,7 +36,7 @@ from typing import Any, Callable, Dict, List, Optional
 
 import numpy as np
 
-from .common import Instance, bits_to_str, str_to_bits
+from .common import Instance, bits_to_str, clustering_of, str_to_bits
 from .embed import Embedding, embed
 from .metrics import Metrics, ModelOptimum, model_optimum, random_counts, score_counts
 from .model import get_formulation
@@ -171,19 +171,24 @@ def run_one(inst: Instance, formulation: str, backend: str, shots: int, seed: in
     fid = emb.fidelity
     device_faithful = bool(fid.linear_terms_uniform and not fid.limit_violations)
 
+
     # --- pulse + Pulser-validated sequence --------------------------------- #
-    p: PulseParams = default_for(emb, **(pulse_overrides or {}))
+    pulse_overrides = dict(pulse_overrides or {})
+    ds = pulse_overrides.pop("delta_final_scale", None)
+    if ds is not None:                       # scan knob: scale the embedding's final detuning
+        pulse_overrides["delta_final"] = float(emb.delta_final) * float(ds)
+    p: PulseParams = default_for(emb, **pulse_overrides)
     seq = build_sequence(emb, p)
     problems = validate(seq)
     if problems:
         raise RuntimeError(f"sequence failed validation: {problems}")
 
-    # What the realised register minimises, classically (n <= 20): is the device's own argmin the model optimum?
+    # What the realised register minimises, classically, with the pulse's final detuning: is the device's own argmin the model optimum?
     realized: Dict[str, Any] = {}
     if f.n_vars <= 20:
         from .common import all_bitstrings
         X = all_bitstrings(f.n_vars).astype(float)
-        Edev = -emb.delta_final * X.sum(1) + 0.5 * np.einsum("bi,ij,bj->b", X, emb.U, X)
+        Edev = -p.delta_final * X.sum(1) + 0.5 * np.einsum("bi,ij,bj->b", X, emb.U, X)
         order = np.argsort(Edev)
         feas_mask = np.array([f.feasible(f.decode(x.astype(np.int8))) for x in X])
         if mopt is None:
@@ -199,6 +204,43 @@ def run_one(inst: Instance, formulation: str, backend: str, shots: int, seed: in
             "energy_gap_infeasible_minus_feasible": (best_infeas_E - best_feas_E) if (best_feas_E is not None and best_infeas_E is not None) else None,
             "rank_of_model_optimum": int(np.where(np.isin(order, np.where(np.abs(objs - mopt.value) <= 1e-9)[0]))[0][0]) + 1
                                       if np.any(np.abs(objs - mopt.value) <= 1e-9) else None,
+        }
+    elif f.n_vars == inst.N * inst.K:
+        # Too many bitstrings to enumerate: check the one-hot subspace (all K^N strings, or a seeded sample
+        # plus the model optimum) and the single-flip defects of the lowest one-hot strings.
+        if mopt is None:
+            mopt = model_optimum(f)
+        N, K = inst.N, inst.K
+        rng = np.random.default_rng(seed)
+        if K ** N <= 65536:
+            A_mat = np.array(np.unravel_index(np.arange(K ** N), (K,) * N)).T
+        else:
+            A_mat = rng.integers(0, K, size=(20000, N))
+        A_mat = np.vstack([A_mat, np.asarray(mopt.assignment)[None, :]])
+        Xoh = np.zeros((len(A_mat), f.n_vars))
+        Xoh[np.arange(len(A_mat))[:, None], np.arange(N)[None, :] * K + A_mat] = 1.0
+        Edev = -p.delta_final * N + 0.5 * np.einsum("bi,ij,bj->b", Xoh, emb.U, Xoh)
+        order = np.argsort(Edev)
+        a0 = tuple(int(v) for v in A_mat[order[0]])
+        feas0 = inst.capacity_ok(a0)
+        obj0 = f.objective(a0)
+        # single-flip defects of the 50 lowest one-hot strings
+        low = Xoh[order[:50]]
+        Xd = np.repeat(low, f.n_vars, axis=0)
+        flip = np.tile(np.arange(f.n_vars), len(low))
+        Xd[np.arange(len(Xd)), flip] = 1 - Xd[np.arange(len(Xd)), flip]
+        Ed = -p.delta_final * Xd.sum(1) + 0.5 * np.einsum("bi,ij,bj->b", Xd, emb.U, Xd)
+        min_defect_gap = float((Ed - np.repeat(Edev[order[:50]], f.n_vars)).min())
+        opt_rows = np.where([clustering_of(tuple(int(v) for v in a)) in set(mopt.clusterings) for a in A_mat])[0]
+        realized = {
+            "subspace": "one-hot strings" + (" (all)" if K ** N <= 65536 else " (20000 sampled + model optimum)"),
+            "argmin_onehot_assignment": list(a0),
+            "argmin_feasible": bool(feas0),
+            "argmin_is_model_optimum": bool(feas0 and abs(obj0 - mopt.value) <= 1e-9),
+            "rank_of_model_optimum_among_onehot": int(np.where(np.isin(order, opt_rows))[0][0]) + 1 if len(opt_rows) else None,
+            "min_single_flip_defect_gap": min_defect_gap,
+            "energy_gap_infeasible_minus_feasible": None,
+            "rank_of_model_optimum": int(np.where(np.isin(order, opt_rows))[0][0]) + 1 if len(opt_rows) else None,
         }
 
     rec: Dict[str, Any] = {
@@ -216,7 +258,8 @@ def run_one(inst: Instance, formulation: str, backend: str, shots: int, seed: in
         print(f"   pulse {p.duration_ns} ns, Omega={p.omega:.3f}, delta {p.delta_init:.2f} -> {p.delta_final:.2f}; sequence validated")
         if realized:
             print(f"   realised register argmin feasible={realized['argmin_feasible']} is model optimum={realized['argmin_is_model_optimum']} "
-                  f"(model optimum at device-energy rank {realized['rank_of_model_optimum']}, gap infeas-feas {realized['energy_gap_infeasible_minus_feasible']})")
+                  f"(model optimum at device-energy rank {realized['rank_of_model_optimum']}, gap infeas-feas {realized['energy_gap_infeasible_minus_feasible']}, "
+                  f"min single-flip defect gap {realized.get('min_single_flip_defect_gap')})")
     if dry_run:
         rec["counts"] = None
         rec["wall_s"] = time.perf_counter() - t_start

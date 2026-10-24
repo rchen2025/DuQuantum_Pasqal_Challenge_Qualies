@@ -233,7 +233,7 @@ def embed_onehot(J: np.ndarray, h: np.ndarray, N: int, K: int, device: Any = Non
     # subspace (observed: cross couplings from crowded dimers made a "customer with no atom" cheaper).
     # delta_final is a free fit parameter here (it is a constant on the one-hot subspace, so it only
     # controls these defect gaps); it starts at alpha*A, the value the QUBO algebra suggests.
-    n_def_parents = min(len(idx), 256)
+    n_def_parents = min(len(idx), 256)        # all one-hot strings on S (16); the first 256 of the sample on M/L
     par = Xoh[:n_def_parents]
     Xdef = np.repeat(par, n, axis=0)
     flip = np.tile(np.arange(n), n_def_parents)
@@ -303,9 +303,15 @@ def embed_onehot(J: np.ndarray, h: np.ndarray, N: int, K: int, device: Any = Non
     rel_pair = np.abs(Ue / alpha - w)[iu] / np.maximum(w[iu], 1e-30)
     sub_worst = float(rel_pair.max()) if len(rel_pair) else 0.0
     aniso = float((dev[iu] / np.maximum(T[iu], 1e-30)).max()) if len(iu[0]) else 0.0
+    # same-vehicle couplings should not depend on k either (the two labelings of one clustering then share
+    # an energy); report the spread relative to the target
+    Ur = U.reshape(N, K, N, K)
+    same_k = np.stack([Ur[:, k, :, k] for k in range(K)], -1)                       # (N, N, K)
+    same_asym = float((np.ptp(same_k, axis=2)[iu] / np.maximum(T[iu], 1e-30)).max()) if K > 1 and len(iu[0]) else 0.0
     efit = energy_fit(pts)
-    notes.append(f"one-hot-subspace energy fit: residual/variance = {efit:.4f} (1 - R^2 of device vs model energies over "
-                 f"{len(idx)} one-hot strings)")
+    notes.append(f"one-hot-subspace energy fit: normalised residual = {efit:.4f} (sum of squared residuals of device vs "
+                 f"alpha*model energies, slope fixed at alpha, over the model-energy variance; {len(idx)} one-hot strings)")
+    notes.append(f"same-vehicle coupling spread over k, relative to target (max over pairs): {same_asym:.3f}")
     viol, dmin, rad = _geometry_violations(pts, limits)
     delta_final = float(delta_fit)
     notes.append(f"delta_final fitted to {delta_final:.4g} rad/µs (QUBO algebra value alpha*A = {-alpha * h_eff:.4g}); "
@@ -321,6 +327,7 @@ def embed_onehot(J: np.ndarray, h: np.ndarray, N: int, K: int, device: Any = Non
     report = FidelityReport(n_atoms=n, alpha=alpha, min_distance=dmin, max_radius=rad, linear_terms_uniform=uniform,
                             linear_spread=spread, delta_final=delta_final, limit_violations=viol, notes=notes,
                             embedder="onehot-polygons", subspace_rel_frobenius=sub_err,
-                            subspace_worst_pair_rel_error=sub_worst, subspace_anisotropy=aniso, **fid)
+                            subspace_worst_pair_rel_error=sub_worst, subspace_anisotropy=aniso,
+                            subspace_same_vehicle_asymmetry=same_asym, **fid)
     return Embedding(coords=pts, alpha=alpha, U=U, J_target=J, h=h, delta_final=delta_final,
                      device=limits.name, fidelity=report, C6=C6)
