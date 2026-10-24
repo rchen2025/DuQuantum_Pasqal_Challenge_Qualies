@@ -73,7 +73,13 @@ class Schedule:
         if limits.max_abs_detuning is not None:
             di = float(np.clip(di, -limits.max_abs_detuning, limits.max_abs_detuning))
             df = float(np.clip(df, -limits.max_abs_detuning, limits.max_abs_detuning))
-        return replace(self, duration=T, omega_max=om, delta_init=di, delta_final=df)
+        s = replace(self, duration=T, omega_max=om, delta_init=di, delta_final=df)
+        # some devices (WeightedAnalogDevice) require a minimum *average* amplitude
+        if limits.min_avg_amp and om > 0:
+            avg = float(s.waveforms(dt=4.0)["amp"].mean())
+            if avg < limits.min_avg_amp:
+                s = replace(s, omega_max=min(om * limits.min_avg_amp / avg * 1.02, limits.max_amp or math.inf))
+        return s
 
     def with_params(self, **kw: Any) -> "Schedule":
         return replace(self, **kw)

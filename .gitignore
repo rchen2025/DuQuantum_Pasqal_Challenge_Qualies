@@ -13,3 +13,4 @@ out/
 jobs/*.json
 .ipynb_checkpoints/
 .DS_Store
+.runner/
