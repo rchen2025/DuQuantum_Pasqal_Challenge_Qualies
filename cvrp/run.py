@@ -300,7 +300,8 @@ def run_one(inst: Instance, formulation: str, backend: str, shots: int, seed: in
 
 
 def record_path(out_dir: Path, rec: Dict[str, Any]) -> Path:
-    name = f"{rec['instance']}__{rec['method'].replace('+', '_').replace(':', '-')}__seed{rec['seed']}.json"
+    # '|' (tag separator in the method label) is illegal in Windows file names -> '~' in the file name only
+    name = f"{rec['instance']}__{rec['method'].replace('+', '_').replace(':', '-').replace('|', '~')}__seed{rec['seed']}.json"
     return out_dir / name
 
 
