@@ -1,14 +1,22 @@
-# STATUS — Sat 2026-10-24, 13:00 ET (hackathon day; freeze Sun 11:00 ET)
+# STATUS — Sat 2026-10-24, 14:40 ET (hackathon day; freeze Sun 11:00 ET)
 
-**What changed and why.** Items 0–6 of the build are done and committed: the whole Track-A pipeline runs end
+**What changed and why.** Gate 1 passed on paper: the real formulation `onehot-ub` is in `docs/MODEL.md`
+(one-hot, no slack, capacity by unbalanced penalization → collapses to a load-balance term via the one-hot
+identity; all couplings positive, all linear terms uniform, N·K atoms = 8/30/60). DERIVATIONS §4, the
+formulation module, 6 new tests (all pass), the regenerated D2 table and the brute-force checker on
+S_seed00/01/04 (SOUND) + binding toy seed 14 (NOT SOUND, documented) are done. **It was AI-drafted at the
+team's request under time pressure — `AI_USE.md` says so; re-derive MODEL.md before judging.** Runner jobs
+006 (onehot-ub on 3 S seeds, random 2000 + qutip 500 shots → `out/gate1/`) and 007 (assert-brief with
+UTF-8, job 002 had crashed on cp1252) are queued behind the calibration job. Next: M1 rows from 006,
+`cvrp.baseline` (qubo-solver) on the same seeds, reviewer pass, then M2 (embedding fidelity → pulse scan).
+
+**Previous entry (13:00 ET).** Items 0–6 of the build are done and committed: the whole Track-A pipeline runs end
 to end on a real tier-S instance with a throwaway textbook formulation (`python -m cvrp.run ... --backend
 random` works everywhere; `--backend qutip` builds and validates the Pulser sequence here and will sample
 once the Windows job runner is up). References are *proven optima* for all 11 instances (exhaustive
 set-partition DP × exact TSP, cross-checked by SA and, on S, by naive enumeration). The derivations document
-(`docs/DERIVATIONS.md`, 780 lines) has §0–3 (CVRP, Eq. 1 → classical cost, textbook formulation with
-brute-force checker numbers), §5–6 (embedding, pulse) and 13 judge Q&As; §4 waits for your formulation.
-**Stopped at Gate 1 as instructed.** A fresh-context reviewer is checking physics signs, textbook algebra,
-metrics and the exact solver in the background; findings will land here.
+(`docs/DERIVATIONS.md`) has §0–3, §5–6 and 13 judge Q&As. A fresh-context reviewer checked physics signs,
+textbook algebra, metrics and the exact solver (findings below).
 
 ## Build order — state
 | # | item | state |
@@ -16,12 +24,13 @@ metrics and the exact solver in the background; findings will land here.
 | 0 | env | runner bat shipped (**not yet launched — needs your double-click**); `device_limits.py --assert-brief` ✔; `requirements.txt` pinned (pytest/pulp/dotenv pins to be confirmed from Windows `pip freeze`); emu-mps calibration script written, queued |
 | 1 | instances + validator | ✔ 11 instances (S×5, M×3, L×3), certificate-first, ρ 0.60–0.95, `validator` 11/11 |
 | 2 | reference | ✔ proven optimum all tiers (L: 1.3 s), SA 10 restarts agrees 11/11, naive brute force agrees on S; CPLEX not available |
-| 3 | model + textbook + variable_count | ✔ checker: feasible fraction, argmin→feasible/optimal, energy gap, weight half/double/zero scan, landscape correlation; D2 table 8/30/60 and 14/45/80 (L = cap) |
+| 3 | model + textbook + variable_count | ✔ checker: feasible fraction, argmin→feasible/optimal, energy gap, weight half/double/zero scan, landscape correlation; D2 table 8/30/60, 14/45/80 (L = cap), **ours 8/30/60** |
+| 3b | **Gate 1 formulation `onehot-ub`** | ✔ `docs/MODEL.md` + DERIVATIONS §4 + `cvrp/formulations/onehot_ub.py` + `tests/test_onehot_ub.py` (6 pass); SOUND on 5/5 shipped S, 35/40 toy S; runner job 006 queued for M1 rows |
 | 4 | embed | ✔ refuses J<0, 5/38/80 enforced, α capped by \|δ\|≤125.66, fidelity = rel. Frobenius off-diag + worst pair, uniform-h check |
 | 5 | pulse | ✔ 3-point Ω ramp + linear δ sweep + slow-region knob; every sequence built on AnalogDevice, `to_abstract_repr()`, δ(T) read-back exact |
 | 6 | run | ✔ CLI → run-record JSON; metrics on feasible decodes only; labelled `repair=energy-descent`; backends qutip/emu-sv/emu-mps/random/counts |
 | — | Makefile `demo`/`deliverables`/`report`, README (D1), `check_deliverables.py` | ✔ (checklist currently FAILs D2-ours, D4, D5 as expected pre-gate) |
-| 7–10 | results.py (D4), baseline.py (qubo-solver), report.py figures, report.pdf | waiting for Gate 1 "go" |
+| 7–10 | results.py (D4), baseline.py (qubo-solver), report.py figures, report.pdf | unblocked: run on `onehot-ub` once job 006 lands |
 
 Tests: 80 pass (`scripts/run_tests.py`, pytest stand-in; real pytest once Windows runner installs it).
 
@@ -31,8 +40,10 @@ P(reach ref) 0.0065 raw (exact: 0.78 %) / 0.080 with energy-descent repair (feas
 `device_faithful=False`; rel. Frobenius embedding error 0.55. This is the bar any quantum run must beat.
 
 ## Needs you
-1. **Double-click `qhack\scripts\win_runner.bat`** (queued: pip install pytest/pulp, pip freeze, brief assert, emu-mps calibration).
-2. **Gate 1: your formulation in `docs/MODEL.md`.** Two facts from the instances to design against:
+1. Runner is alive (13:36); jobs 004–007 queued. Check `.runner/out/006_*.log` for the first onehot-ub emulator rows.
+2. **Re-derive `docs/MODEL.md` §3b (the one-hot identity) and §6 (the `A` rule) by hand** — judges will ask exactly those (MODEL.md Q1–Q3).
+3. `git add -A && git commit` (the Linux shell cannot commit: deletion is disabled, git leaves lock files).
+4. Facts from the instances that shaped the design (kept for the report):
    - optima on all L instances use only 3 of 4 vehicles → the model must allow empty vehicles (brief §2 assumption 6);
    - with the pairwise-distance objective, the capacity constraint is non-binding on most tier-S seeds (34/40 toy
      seeds) — pick M1 seeds where it binds (S_seed01 ρ=0.86, S_seed00 ρ=0.71) and check the checker's `B` margin.
@@ -43,7 +54,7 @@ Depot (50,50); certificate-first instances; references proven by enumeration; ga
 clusterings compared as sets.
 
 ## Open judge questions — see DERIVATIONS.md §7 (13 answered)
-Still open for §4: why linear terms are uniform in *our* formulation; how each weight was set and what breaks when halved/doubled.
+§4 answered in MODEL.md: linear terms uniform by the one-hot identity (the dropped diagonal is constant on one-hot strings); `A` by a repair-step argument (survives one halving, fails at ×1/4); `λ₂ = 0.15·R/(2Q)` by a 40-seed scan, with the binding seeds it does not rescue named.
 
 ## Reviewer pass on items 0–6 (fresh context, 13:10)
 No blockers. Physics signs, Eq.(1)→QUBO mapping, textbook algebra (max err 3e-11 on 2000 random bitstrings), device-limit reading, exact DP (verified against brute force on 40 random instances) all confirmed. Fixed: one stale typed number (0.066 → 0.080), model-optimum tie handling in metrics (P(reach) by value), decomposition cost minimised over all optima, strict-radius rescale margin in embed, three wording slips in DERIVATIONS (§2.3 mean-h is our choice; §3.4 "2 of 8 clusterings"; §6.1 adiabatic criterion in Landau–Zener form).

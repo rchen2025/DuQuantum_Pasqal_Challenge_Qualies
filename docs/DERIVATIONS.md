@@ -436,31 +436,42 @@ Tests enforcing all of this: `tests/test_model.py` (`test_brute_force_check_pass
 
 ---
 
-## 4. Our formulation (Gate 1)
+## 4. Our formulation (Gate 1): `onehot-ub`
 
-*To be written before model code at Gate 1 — the formulation arrives in `docs/MODEL.md`. Writing this
-section, then `cvrp/formulations/<name>.py`, then `python scripts/variable_count.py --write-md`, then
-`brute_force_check` on three tier-S seeds (include a seed where capacity binds, e.g. toy seed 14 or its
-`instances/` equivalent), is the Gate-1 order.*
+**Full derivation, weight scan, checker output and judge Q&A: [`MODEL.md`](MODEL.md)** (AI-drafted at the
+team's request on 2026-10-24, to be re-derived by the team before judging — `AI_USE.md`). This section is
+the summary that code follows (`cvrp/formulations/onehot_ub.py`, tests in `tests/test_onehot_ub.py`).
 
-It must contain, in this order:
+1. **Variables.** The textbook's one-hot `x_ik` (index `i·K + k`) and nothing else: `n = N·K` = S 8 / M 30 /
+   L 60 (`scripts/variable_count.py`). No slack.
+2. **Objective.** (3.1) unchanged, additive over clusters, so the model gap means the same as in §3.
+3. **Constraints.** [=] exactly-one: squared penalty `A Σ_i (1 − Σ_k x_ik)²` → `h = −A`, `J = 2A` on each
+   customer's K-clique, offset `A·N` (same algebra as §3.2). [≤] capacity: unbalanced penalization
+   `Σ_k [−λ₁(Q − L_k) + λ₂(Q − L_k)²]` (Montañez-Barrera et al. 2024, arXiv:2211.13914), expanded to
+   per-variable terms `c_i x_ik`, `c_i = d_i(λ₁ − 2λ₂Q + λ₂d_i)`, plus couplings `2λ₂ d_i d_j` on same-vehicle
+   pairs. **One-hot identity:** `Σ_k c_i x_ik = c_i` on every one-hot string, so all per-customer linear terms
+   (λ₁ included) are constants where the model lives and are dropped. What remains is
+   `λ₂ Σ_k L_k² + const` — capacity *becomes a load-balance term*, soft, with no `L_k ≤ Q` guarantee
+   (K = 2: the balance optimum is feasible whenever a feasible split exists; K ≥ 3: likely only).
+   Final cost (MODEL.md M4):
 
-1. **Variables**: what each bit means, index convention, count formula `n(N, K, Q)` and the S/M/L numbers
-   (from `count_vars`, pasted from the script output, never typed).
-2. **Objective**: the closeness measure, written as a polynomial in the bits, and whether it is additive
-   over clusters (`cluster_cost`) so `cvrp.exact` can certify the references. If it differs from (3.1),
-   say how the model gap changes meaning.
-3. **Each constraint → how it is handled**: penalty (expanded to `Q` as in §3.2, cross terms, `x² = x`,
-   offset), native encoding, or "left to decode/repair" — one paragraph per constraint, labelled [=]/[≤].
-4. **Why every coupling is positive** (§2.3), term by term; if any sign had to be flipped (`x → 1−x` on a
-   subset) show the substitution.
-5. **Why every linear term is uniform** (or exactly what is lost under the mean, with the number), so a
-   single global `δ_f` realises it. State the resulting `h/J` ratio the embedding must hit.
-6. **Weights**: how each is set (rule + reason), then `brute_force_check` output pasted verbatim for ≥ 3
-   tier-S seeds: feasible fraction, argmin feasible/optimal, energy gap, and what breaks at ½× and 2× of
-   each weight (`ok_at_half`, `ok_at_double`, `halvings_until_failure`, `ok_at_zero`).
-7. **What it costs**: variables vs §3, coupling structure (sparse? geometric?), feasible fraction of random
-   bitstrings vs the textbook's 2 %, and the expected effect on the §9 metrics.
+       E(x) = Σ_k Σ_{i<j} d_ij x_ik x_jk + A Σ_i (1 − Σ_k x_ik)² + 2λ₂ Σ_k Σ_{i<j} d_i d_j x_ik x_jk .
+
+4. **Signs.** `d_ij ≥ 0`, `2A > 0`, `2λ₂ d_i d_j > 0`: every coupling positive, no flip needed.
+5. **Linear terms.** Only `−A`, on every variable: uniform, `δ_f = +αA` (27.7 rad/µs at the device scale that
+   puts the clique at 5 µm). Nothing is lost under the mean — the dropped diagonal is exactly constant.
+6. **Weights.** `A = max_i Σ_{j≠i} (d_ij + 2λ₂ d_i d_j) + 1` (provably makes every argmin one-hot: any
+   exactly-one repair step lowers the energy). `λ₂ = κ·R/(2Q)`, `R = max_i Σ_j d_ij`, `κ = 0.15` from a
+   40-seed toy scan (35/40 sound, 37/40 argmin feasible, 5/5 shipped S sound; `κ = 0`: 34/34; `κ = 1`:
+   27/40 sound, 40/40 feasible). Checker verbatim for S_seed00/01/04 and the binding toy seed 14 (NOT
+   SOUND: closest clustering overloads a vehicle; best *feasible* string is still the optimum) in MODEL.md §6
+   and `out/gate1/check_*.txt`. `A` survives one halving, fails at ×1/4; `λ₂` is not binding on any
+   shipped S instance (`ok_at_zero=True`).
+7. **Cost.** Support = N×K rook's graph, S 16/28, M 165/435, L 510/1770 pairs; the capacity term adds no
+   pairs. The embedding cannot make `(i,k)–(j,l≠k)` weak while `(i,k)–(j,k)` is strong (the K copies of a
+   customer sit 5 µm apart): expect a relative Frobenius error of the textbook's order (0.55); measured by
+   `cvrp.embed` per run (runner job 006). Random-bitstring feasible fraction 1.6–4.7 % on S, set by the
+   decodable fraction `K^N/2^{NK}`, not by the capacity term.
 
 ---
 
