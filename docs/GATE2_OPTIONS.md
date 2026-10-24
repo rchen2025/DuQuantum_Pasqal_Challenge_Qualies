@@ -47,3 +47,21 @@ on top of (b). Mention in the report as the road not taken unless you want the D
 
 Recommendation: (a) tonight regardless (it is cheap and honest), plus (b) if you accept the model change —
 it is the only path to non-zero feasibility on M/L with this device.
+
+## (e) Probe: seed selection on the raw customer map (one atom per customer) — negative
+Idea: place one atom per customer at the (scaled) customer position; the device then penalises exciting
+two *close* customers, so the excited atoms are K mutually far "seeds" (medoids); assign the rest greedily
+with capacity and route exactly. N atoms (10 / 15), no cliques, geometry-native. Probe on M_seed00 with the
+in-house emulator (`out/gate2/seed_probe_M.log`): with the closest customer pair at 5.1 µm the map fills the
+38 µm radius and the typical neighbour distance is ~15 µm ≫ the blockade radius (6.7 µm), so 8–9 of 10 atoms
+excite at any positive δ_f and P(exactly K = 3 excited) = 0. The seed heuristic itself is good (best 3-subset
++ greedy = the CVRP optimum on M_seed00), but the register would have to be a *unit-disk sparsification* of
+the customer graph (classic Rydberg MIS), not the map — the 1/r⁶ law gives about one decade of usable
+distances. A real option for L/M, but it is a new model (A1 rewritten) and ≥ 3 h of work; not for tonight
+unless you want to trade the report polish for it.
+
+## (f) Also measured today: K = 2 does not save M/L either
+Bisection registers (`out/gate2/*_K2.json`: M as 10 dimers with 2Q, L as 15 dimers with 2Q) put the model
+optimum at rank 192 594 / 12 217 among one-hot strings — the dense pairwise-distance objective needs a
+*distance-inverted* map (far customers → close atoms) that a plane cannot provide beyond ~4–5 customers.
+So (b) is out as well; (a) stays the honest overnight plan for M/L.
