@@ -1,4 +1,19 @@
-# STATUS — Sat 2026-10-24, 17:40 ET (hackathon day; freeze Sun 11:00 ET)
+# STATUS — Sat 2026-10-24, 18:10 ET (hackathon day; freeze Sun 11:00 ET)
+
+**18:10 ET.** References switched (see 17:40): all 11 instances `best_known` via qubo-solver (60 s) + constrained SA,
+tier-S brute-force check agrees 5/5, values unchanged, results.csv re-scored (66 rows, only the status column
+moved). Report refresh 2 is in (4 pages; C* labelled best known; L finding: qubo-solver's SA on the penalized
+QUBO is 23–34 % above C* within 60 s). New tier-M rows: **qubo-solver quantum on M_seed00 (its BLaDE register,
+AnalogDevice, emu-mps χ=32): 99 % of shots one-hot, 1.6 % capacity-feasible, best feasible 72 % model gap /
+35 % CVRP gap** — versus our polygon register: 0 % decodable. Diagnosis: our one-hot-subspace fit of δ_f is
+broken at M (residual 1.55) and returned the device maximum 125.66 rad/µs, 2.3× the clique coupling
+U = 55.1 rad/µs, so two excitations per triangle are favoured and no shot is one-hot. Dry-run with
+δ_f = 0.65 U = 35.8 rad/µs: single-flip defect gap turns positive (+19.4) while the optimum's rank among
+one-hot strings stays 10 474 (that part is the distance couplings). Before/after row queued (lane b job 240,
+`|dfscale0.285`); if it decodes, embed_onehot gets a hard bound δ_f ∈ (0, U_clique) with a DERIVATIONS note.
+Main lane resumed (100 = M_seed01/02 as-is running, then 110 L, 120 M χ=64). Track B slice 1 is in
+`routing/` + `docs/ROUTING.md` (standalone, negative result, not in the report).
+
 
 **17:40 ET.** Reference values are being switched to the brief's §9.3 route at Richard's request: C* now comes
 from qubo-solver's classical solver on the `onehot-ub` QUBO (CPLEX if importable, else its SA with stated
