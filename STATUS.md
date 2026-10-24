@@ -1,5 +1,15 @@
 # STATUS — Sat 2026-10-24, 15:45 ET (hackathon day; freeze Sun 11:00 ET)
 
+**16:40 ET addendum (Claude, chat session) — how to read the six new rows in results.csv (a56980e).**
+(1) *Useful quantum work (brief §9.2):* the assignment-valid random control (`random-onehot`) reaches the model
+optimum with P ≈ 0.12 on S_seed00/01/04; the headline `onehot-ub[emb=polygons]+qutip` rows reach it with
+P ≈ 0.94 / 0.95 / 0.89 — a 7–8× factor. Put this in REPORT.md and as a judge Q&A. (2) *`onehot-ub-tight` is
+an ablation, not a replacement:* the tight `A = R_w/K` keeps the optimum as the ground state (proved, checked)
+but shrinks the single-flip defect gaps the sweep must resolve; P(reach optimum) goes 0.94→0.03 (S_seed00),
+0.95→0.56 (S_seed01), 0.89→0.96 (S_seed04) with the pulse tuned for the original `A`. Headline stays
+`onehot-ub`; report `tight` as the experiment showing the exactly-one margin is physically load-bearing; one
+sentence in DID_NOT_WORK.md. Do not re-tune the pulse for `tight` unless everything else is finished.
+
 **What changed and why.** Tier S is done end to end with final settings and every deliverable now exists:
 `make deliverables` prints **ALL PASS** (D1 README + pinned requirements, D2 write-up with the generated table,
 D3 11 validated instances with proven references, D4 `results.csv` with 47 rows, D5 `report/report.pdf`
