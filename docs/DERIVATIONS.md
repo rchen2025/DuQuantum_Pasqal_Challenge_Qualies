@@ -626,6 +626,73 @@ added, `fidelity.ok` is false, and the run layer refuses to present such a run a
 device result.  The formulation must make the diagonal uniform itself (e.g. by
 absorbing per-variable biases into the coupling structure or into the constant).
 
+### 5.7 Structure-aware embedding for one-hot formulations (M2 step 1, `cvrp/embed_onehot.py`)
+
+**What went wrong with the generic embedder.** `onehot-ub` asks for the N×K rook's graph: the K atoms of
+customer i coupled by 2A (the exactly-one clique), atom (i,k) coupled to (j,k) by w_ij = d_ij + 2λ₂d_id_j,
+and (i,k)–(j,l≠k) coupled by exactly 0. In a plane with U = C6/r⁶ the clique forces the K copies of a
+customer to sit 5 µm apart, so any atom of customer j is at nearly the same distance from all K copies of
+customer i: the "zero" couplings come out as strong as the wanted ones. Measured on the M1 rows (generic
+embedder, baseline pulse): rel. Frobenius error 0.94–0.95, and on S_seed04 the realised register's ground
+state is an *infeasible* string (model optimum at device-energy rank 9); P(reach ref) = 11.6 / 7.8 / 0.4 %.
+
+**Ask for less: the one-hot subspace.** On a one-hot string every customer has exactly one excited atom,
+so between customers i and j exactly one of the K² couplings is active, U(i,a_i; j,a_j). Writing
+Σ_ik x_ik = N (constant), the device energy on one-hot strings is
+
+    E_dev(a) = −δ_f·N + Σ_{i<j} U(i,a_i; j,a_j) .                                                   (5.7a)
+
+The model wants E_dev(a) = α·E_QUBO(a) + const with E_QUBO(a) = const + Σ_{i<j, a_i=a_j} w_ij. Split the
+sum in (5.7a) into same-vehicle and cross-vehicle pairs: if for each (i,j) all K(K−1) cross couplings were
+equal to a common value C_ij, then Σ_{i<j} U(i,a_i;j,a_j) = Σ_{i<j} C_ij + Σ_{i<j, a_i=a_j} (U_same,ij − C_ij),
+i.e. only the *effective* coupling
+
+    U_eff(i,j) = U(i,k; j,k) − mean_{l≠k} U(i,k; j,l)                                               (5.7b)
+
+has to equal α w_ij; the cross couplings need not vanish, they only need to be *constant on the subspace*.
+For K = 2 with parallel dimers displaced perpendicular to their axis both cross distances are √(Δ²+s²)
+(s = 5 µm), so the identity is exact; otherwise the spread of the cross couplings ("anisotropy",
+max |U(i,k;j,l) − mean| / αw_ij) is reported.
+
+**The construction.** Each customer becomes a rigid regular K-gon of side s = 5 µm (K=2: a dimer), so the
+clique coupling is exactly 2A·α with α = C6/s⁶/(2A) — the clique is pinned at the minimum separation.
+The polygon centres c_i and orientations θ_i are optimised (L-BFGS, 6 seeded starts) so that the device
+energies of all K^N one-hot strings (a seeded sample of 4000 beyond 65 536) fit α·E_QUBO up to a constant:
+we minimise 1 − R² of that fit, which is literally "the register orders the clusterings like the model".
+Two more terms: (i) **defect gaps** — every one-hot string with one bit flipped (a customer with no atom or
+with two) must lie at least ½ of the model's own penalty gap above its parent, in device units; without this
+the crowded cross couplings made "customer with no atom" the ground state on two of three seeds; (ii)
+hinges keeping atoms of different polygons ≥ 5 µm apart and the register inside 38 µm. **δ_f is a free fit
+parameter** here: by (5.7a) it is a constant on the one-hot subspace, so it only sets the defect gaps; it
+starts at the QUBO value αA (27.5 rad/µs) and lands at 32.8 / 33.2 / 37.3 rad/µs on the three seeds — a
+little above αA because the real cross couplings make an excitation cheaper to drop than the algebra with
+zero cross terms assumes. All limits still come from the device object; the sequence is still validated by
+Pulser.
+
+**What we report.** (1) The brief's fidelity formula on the full matrix — now dominated by the four exact
+clique entries (0.14 / 0.17 / 0.32), so it understates the pair errors: the worst positive-pair relative
+error is still ≈ 1 and the largest spurious coupling ≈ 50 QUBO units ≈ w_min; (2) the subspace fidelity
+||U_eff/α − w||_F/||w||_F = 0.47 / 0.23 / 0.20 and the energy-fit residual 1 − R² = 0.29 / 0.37 / 0.09;
+(3) the realised-register check: argmin feasible **and** equal to the model optimum on all three seeds
+(device-energy rank 1, gap infeasible − feasible = 15.4 / 1.4 / 14.0 rad/µs vs 0.9 / 1.1 / −3.5 before).
+All three live in every run record (`embedding.fidelity`, `realized_register`) and in results.csv.
+
+**Before / after (numpy-sv, baseline pulse, 500 shots, seed 0; qutip confirms the "before" rows within
+sampling noise: 12.6 / 7.2 / 0.2 %):**
+
+| instance | embedder | feasibility | P(reach model opt) | P(reach CVRP ref) | best model gap | rel. Frob. | realised argmin = optimum |
+|---|---|---|---|---|---|---|---|
+| S_seed00 | generic | 0.198 | 0.116 | 0.116 | 0 % | 0.948 | yes (rank 1) |
+| S_seed00 | polygons | **0.996** | **0.514** | **0.514** | 0 % | 0.140 | yes (rank 1) |
+| S_seed01 | generic | 0.088 | 0.078 | 0.078 | 0 % | 0.940 | yes (rank 1) |
+| S_seed01 | polygons | **0.630** | **0.612** | **0.612** | 0 % | 0.175 | yes (rank 1) |
+| S_seed04 | generic | 0.056 | 0.026 | 0.004 | 0 % | 0.946 | no (rank 9) |
+| S_seed04 | polygons | **0.980** | **0.682** | 0.066 | 0 % | 0.321 | yes (rank 1) |
+
+(S_seed04: P(reach CVRP ref) stays low because the model optimum is not the CVRP-optimal clustering —
+decomposition gap 21.7 %, §7.) Random sampler on the same QUBOs: feasibility 0.017–0.045, P(reach) 0.0075–0.009.
+Numbers: `python -m cvrp.results out/m1 out/m2`.
+
 ## 6. Pulse
 
 ### 6.1 Why we start at large negative detuning
@@ -778,6 +845,25 @@ Any quantum result on S must beat these numbers at equal shots or it says nothin
 this comparison (§9.2, "replace the quantum part with a random sampler"). → `cvrp/metrics.py`.
 
 ### Embedding & pulse
+
+**Q-emb1. Your fidelity went from 0.95 to 0.14 — did you fix the embedding or the metric?** Neither; we changed
+what we ask the register to reproduce. The full-matrix error is the brief's formula and we still report it,
+but it is dominated by the exactly-one cliques (the four largest entries) and says little about the
+same-vehicle couplings; the numbers that decided the design are the one-hot-subspace fit (1 − R² of device
+vs model energies) and the realised-register check (is the device's own argmin the model optimum?). Both
+are in every record. → §5.7.
+
+**Q-emb2. If cross-vehicle couplings are not zero, how can the device compute the model?** Because the
+model only lives on one-hot strings, where each customer pair contributes exactly one coupling; a constant
+cross coupling shifts every one-hot string by the same amount. Only U_same − U_cross must match α·w_ij
+(5.7b). For K = 2 parallel dimers this is exact; for K ≥ 3 the spread of the cross couplings is measured
+and reported as anisotropy. → §5.7.
+
+**Q-emb3. Why is δ_final no longer αA?** On the one-hot subspace Σ_ik x_ik = N, so δ_final is a constant
+there and cannot change the ordering of clusterings; it only sets how far single-flip defects (a customer
+with 0 or 2 atoms) sit above the one-hot strings, and the real cross couplings move that balance. We fit
+it (starting from αA = 27.5, landing at 33–37 rad/µs, far inside ±125.66) against the explicit defect-gap
+constraint, and the realised-register check confirms every argmin is one-hot and optimal. → §5.7, §6.2.
 
 **Q: How do you know the register implements *your* QUBO and not something else?**
 `Embedding.realized_Q()` is the QUBO the final Hamiltonian actually encodes

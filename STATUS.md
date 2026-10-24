@@ -1,6 +1,22 @@
-# STATUS — Sat 2026-10-24, 14:45 ET (hackathon day; freeze Sun 11:00 ET)
+# STATUS — Sat 2026-10-24, 15:00 ET (hackathon day; freeze Sun 11:00 ET)
 
-**What changed and why.** Gate 1 is implemented exactly as `docs/MODEL.md` says (`onehot-ub`: one-hot, no slack,
+**What changed and why.** M1 is in (3 tier-S seeds, `onehot-ub` on qutip / emu-sv / our exact state-vector
+emulator, plus the random sampler; all three emulators agree within sampling noise; Windows pytest is fully
+green) and M2 step 1 — embedding fidelity — produced the biggest jump of the day. The generic embedder cannot
+realise the one-hot rook's graph (cross-vehicle couplings come out as strong as the wanted ones, rel. Frobenius
+0.95, and on S_seed04 the register's own ground state was infeasible). The fix is to ask for less: on one-hot
+strings each customer pair contributes exactly one coupling, so only *same-vehicle minus cross-vehicle* has to
+match α·w_ij; cross couplings may be anything constant. `cvrp/embed_onehot.py` builds each customer as a rigid
+5 µm K-gon and fits the device energies of all one-hot strings to the model energies (1 − R²), with explicit
+"single-flip defect" gaps and a fitted δ_final (DERIVATIONS §5.7). Result, baseline pulse, 500 shots:
+P(reach model optimum) 11.6 / 7.8 / 2.6 % → **51 / 61 / 68 %**, feasibility 20 / 9 / 6 % → **99.6 / 63 / 98 %**,
+realised argmin = model optimum on 3/3 seeds (random sampler: 0.75 %, 2–4 %). qutip confirmation of the
+"after" rows and the qubo-solver baselines (BLaDE + local_energy_scale, same scorer) are queued on the runner
+(`cvrp/baseline.py` is written, API verified against the installed source). Next: reviewer pass on M1/M2-1,
+then weights via the brute-force checker, then the pulse scan (Ω scale / δ_final / slow region) — all on the
+in-house emulator with qutip confirmation of the final rows.
+
+**Previous entry (14:45 ET, M1 first rows).** Gate 1 is implemented exactly as `docs/MODEL.md` says (`onehot-ub`: one-hot, no slack,
 capacity → load-balance via the one-hot identity; DERIVATIONS §4 ↔ code ↔ regenerated D2 table agree, 8/30/60
 atoms). M1 has its first quantum rows: an in-house exact state-vector emulator (`cvrp/svsim.py`, backend
 `numpy-sv`, built from Pulser's own per-ns samples) lets tier S run here while the Windows runner re-runs the
