@@ -1,14 +1,23 @@
-# exact stack verified against the hackathon venv (2026-10-24)
+# Exact versions of the hackathon venv (Python 3.14, Windows) — 2026-10-24.
+# Core quantum stack (brief §7)
 pulser==1.9.1
 pulser-core==1.9.1
 pulser-simulation==1.9.1
 pasqal-cloud==0.24.0
 qoolqit==1.5.0
 qubo-solver==0.9.1
+emu-base==2.10.0
 emu-sv==2.10.0
 emu-mps==2.10.0
-numpy>=2
-scipy
-matplotlib
-pytest
-python-dotenv
+torch==2.14.1
+qutip==5.3.1
+# Scientific python
+numpy==2.5.4
+scipy==1.18.1
+matplotlib==3.11.2
+pandas==3.1.0
+networkx==3.7
+# Reference solvers / tests / misc
+pulp==3.3.0
+pytest==9.0.2
+python-dotenv==1.2.1

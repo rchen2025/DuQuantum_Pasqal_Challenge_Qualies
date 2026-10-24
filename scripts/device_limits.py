@@ -85,6 +85,49 @@ def describe(dev, omega: float | None = None) -> dict:
     return out
 
 
+# The hackathon brief's hardware-envelope table (§3.1) for AnalogDevice.
+# Everything the cvrp/ package relies on is read from the device object at
+# runtime; this table only exists so we can PROVE the brief and Pulser agree.
+BRIEF_TABLE = {
+    "max_atom_num": 80,
+    "min_atom_distance": 5.0,          # µm
+    "max_radial_distance": 38.0,       # µm
+    "max_amp": 12.57,                  # rad/µs  (2π·2 MHz)
+    "max_abs_detuning": 125.66,        # rad/µs  (2π·20 MHz)
+    "max_sequence_duration": 6000,     # ns
+    "interaction_coeff": 8.657e5,      # rad/µs·µm^6
+}
+
+
+def assert_brief(dev) -> None:
+    """Assert that Pulser's AnalogDevice matches the brief's §3.1 table
+    (relative tolerance 1e-3 for the rounded numbers).  Exits non-zero on
+    mismatch so `make deliverables` can gate on it."""
+    ch = dev.channels["rydberg_global"]
+    got = {
+        "max_atom_num": dev.max_atom_num,
+        "min_atom_distance": dev.min_atom_distance,
+        "max_radial_distance": dev.max_radial_distance,
+        "max_amp": ch.max_amp,
+        "max_abs_detuning": ch.max_abs_detuning,
+        "max_sequence_duration": dev.max_sequence_duration,
+        "interaction_coeff": dev.interaction_coeff,
+    }
+    bad = []
+    for k, want in BRIEF_TABLE.items():
+        g = got[k]
+        ok = g is not None and math.isclose(float(g), float(want), rel_tol=1e-3)
+        print(f"   {'OK ' if ok else 'BAD'} {k:<24} brief={want!s:<10} pulser={g}")
+        if not ok:
+            bad.append(k)
+    if dev.dmm_channels:
+        bad.append("dmm_channels (brief: global detuning only)")
+    print(f"   {'OK ' if not dev.dmm_channels else 'BAD'} {'no DMM (global δ only)':<24} pulser dmm_channels={list(dev.dmm_channels)}")
+    if bad:
+        sys.exit(f"device/brief mismatch: {bad}")
+    print("   brief table matches pulser's AnalogDevice")
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser()
     ap.add_argument("device", nargs="?", default=None)
@@ -92,9 +135,16 @@ def main(argv=None):
     ap.add_argument("--cloud", default=None)
     ap.add_argument("--omega", type=float, default=None)
     ap.add_argument("--dump", default=None, help="write the numbers to this JSON file")
+    ap.add_argument("--assert-brief", action="store_true",
+                    help="assert pulser's AnalogDevice matches the hackathon brief table (exit 1 if not)")
     a = ap.parse_args(argv)
     import pulser
     print(f"pulser {pulser.__version__}")
+    if a.assert_brief:
+        import pulser.devices as pd
+        print("-- brief §3.1 table vs pulser AnalogDevice")
+        assert_brief(pd.AnalogDevice)
+        return
     if a.device or a.json or a.cloud:
         devs = [load_device(a.device, a.json, a.cloud)]
     else:
