@@ -337,6 +337,7 @@ def main(argv=None):
     ap.add_argument("--counts", default=None, help="JSON file bitstring->count to score instead of sampling")
     ap.add_argument("--dry-run", action="store_true")
     ap.add_argument("--out", default="out")
+    ap.add_argument("--tag", default="", help="appended to the method label (e.g. a scan point) so rows stay unique")
     a = ap.parse_args(argv)
 
     inst = Instance.load(a.instance)
@@ -349,6 +350,8 @@ def main(argv=None):
     rec = run_one(inst, a.formulation, a.backend, a.shots, a.seed, weights=parse_kv(a.weights),
                   pulse_overrides=pulse_over, repair=a.repair, bond_dim=a.bond_dim, counts=counts, dry_run=a.dry_run,
                   embed_kw={"embedder": a.embedder, "cache_dir": a.embedding_cache or None})
+    if a.tag:
+        rec["method"] += "|" + a.tag
     pth = save_record(rec, a.out)
     print(f"record -> {pth}")
 

@@ -951,7 +951,8 @@ this comparison (§9.2, "replace the quantum part with a random sampler"). → `
 monotone trends, not a sharp optimum: longer is always better up to the device limit (so we use the maximum
 minus the 200 ns safety margin), and Ω/Ω_max = 0.75 beats 1.0 and 0.5 at every duration. The δ_f scan
 (×0.8 / ×1 / ×1.25) brackets the fitted value with the maximum at ×1. S_seed02/03, which were not used in the
-scan, reach the model optimum in 98 % / 97 % of raw shots with these settings. → §6.6, `results.csv`.
+scan, reach the model optimum in 99 % / 96 % of raw shots on qutip with these settings; the three scan seeds give
+94 / 95 / 89 % (qutip, `out/m3`). → §6.6, `results.csv`.
 
 **Q-pulse2. Does the register actually stay adiabatic?** We cannot prove it from a gap we do not compute,
 but the measurements say yes where it matters: P(reach model optimum) rises with duration at fixed Ω

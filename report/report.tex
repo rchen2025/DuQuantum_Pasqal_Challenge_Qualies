@@ -189,7 +189,7 @@ backend
 \endhead
 \bottomrule\noalign{}
 \endlastfoot
-S\_seed00 & ours & 0.99 & 0.0 \% & 0.0 \% & 0.90 & 0.90 & 0.26 &
+S\_seed00 & ours & 1.00 & 0.0 \% & 0.0 \% & 0.94 & 0.94 & 0.26 &
 qutip \\
 S\_seed00 & ours, generic emb. & 0.22 & 0.0 \% & 0.0 \% & 0.13 & 0.13 &
 0.95 & qutip \\
@@ -199,7 +199,7 @@ S\_seed00 & qubo-solver tabu & 1.00 & 0.0 \% & 0.0 \% & 1.00 & 1.00 &
 undef. & qs-classical \\
 S\_seed00 & random sampler & 0.04 & 0.0 \% & 0.0 \% & 0.01 & 0.01 & 0.95
 & random \\
-S\_seed01 & ours & 0.88 & 0.0 \% & 0.0 \% & 0.88 & 0.88 & 0.21 &
+S\_seed01 & ours & 0.95 & 0.0 \% & 0.0 \% & 0.95 & 0.95 & 0.21 &
 qutip \\
 S\_seed01 & ours, generic emb. & 0.09 & 0.0 \% & 0.0 \% & 0.07 & 0.07 &
 0.94 & qutip \\
@@ -209,15 +209,23 @@ S\_seed01 & qubo-solver tabu & 1.00 & 0.0 \% & 0.0 \% & 1.00 & 1.00 &
 undef. & qs-classical \\
 S\_seed01 & random sampler & 0.02 & 0.0 \% & 0.0 \% & 0.01 & 0.01 & 0.94
 & random \\
-S\_seed02 & ours (in-house SV) & 1.00 & 0.0 \% & 0.0 \% & 0.98 & 0.98 &
-0.31 & numpy-sv \\
+S\_seed02 & ours & 1.00 & 0.0 \% & 0.0 \% & 0.99 & 0.99 & 0.31 &
+qutip \\
+S\_seed02 & qubo-solver quantum & 0.95 & 0.0 \% & 0.0 \% & 0.18 & 0.18 &
+0.21 & qs-quantum \\
+S\_seed02 & qubo-solver tabu & 1.00 & 0.0 \% & 0.0 \% & 1.00 & 1.00 &
+undef. & qs-classical \\
 S\_seed02 & random sampler & 0.04 & 0.0 \% & 0.0 \% & 0.01 & 0.01 & 0.31
 & random \\
-S\_seed03 & ours (in-house SV) & 1.00 & 0.0 \% & 15.6 \% & 0.01 & 0.97 &
-0.29 & numpy-sv \\
+S\_seed03 & ours & 1.00 & 0.0 \% & 15.6 \% & 0.01 & 0.96 & 0.29 &
+qutip \\
+S\_seed03 & qubo-solver quantum & 0.99 & 0.0 \% & 15.6 \% & 0.18 & 0.79
+& 0.14 & qs-quantum \\
+S\_seed03 & qubo-solver tabu & 1.00 & 0.0 \% & 15.6 \% & 0.00 & 1.00 &
+undef. & qs-classical \\
 S\_seed03 & random sampler & 0.05 & 0.0 \% & 15.6 \% & 0.01 & 0.01 &
 0.29 & random \\
-S\_seed04 & ours & 0.99 & 0.0 \% & 21.7 \% & 0.09 & 0.62 & 0.32 &
+S\_seed04 & ours & 1.00 & 0.0 \% & 21.7 \% & 0.02 & 0.89 & 0.32 &
 qutip \\
 S\_seed04 & ours, generic emb. & 0.06 & 0.0 \% & 21.7 \% & 0.00 & 0.03 &
 0.95 & qutip \\
@@ -269,14 +277,15 @@ S\_seed04 & 0.714 & 184.42 & 224.49 & 21.7 \% \\
 \end{longtable}
 
 Reading: with the structure-aware register and the scanned pulse, the
-device returns the model-optimal clustering in ≈ 90--98 \% of raw shots
-on tier S (random sampler: 0.7--1 \%; generic embedder: 7--13 \%). Where
-P(reach \(C^*\)) is low with a 0 \% model gap (S\_seed03/04) the loss is
-the decomposition, not the device. qubo-solver's own pipeline (BLaDE +
-its drive shaper, 5940 ns) reaches 0.78 on two instances and fails on
-S\_seed04; its classical tabu search finds every model optimum, and its
-default SA path does not (a single-start greedy descent at \(T_0=5\) ---
-we report a stated-parameter SA instead).
+device returns the model-optimal clustering in 89--99 \% of raw shots on
+all five tier-S instances (random sampler: 0.7--1 \%; generic embedder:
+3--13 \%). Where P(reach \(C^*\)) is low with a 0 \% model gap
+(S\_seed03/04) the loss is the decomposition, not the device.
+qubo-solver's own pipeline (BLaDE + its drive shaper, 5940 ns) reaches
+0.18--0.79 of the model optimum on four instances and fails on S\_seed04
+(27 \% model gap); its classical tabu search finds every model optimum,
+and its default SA path does not (a single-start greedy descent at
+\(T_0=5\) --- we report a stated-parameter SA instead).
 
 \hypertarget{what-did-not-work}{%
 \section{6. What did not work}\label{what-did-not-work}}

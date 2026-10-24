@@ -1,6 +1,23 @@
-# STATUS — Sat 2026-10-24, 15:50 ET (hackathon day; freeze Sun 11:00 ET)
+# STATUS — Sat 2026-10-24, 16:00 ET (hackathon day; freeze Sun 11:00 ET)
 
-**What changed and why.** M2 is through its three steps on tier S. (1) Embedding: the structure-aware
+**What changed and why.** Tier S is done end to end with final settings and every deliverable now exists:
+`make deliverables` prints **ALL PASS** (D1 README + pinned requirements, D2 write-up with the generated table,
+D3 11 validated instances with proven references, D4 `results.csv` with 47 rows, D5 `report/report.pdf`
+3 pages). Headline rows (pulser-simulation/qutip, structure-aware registers, 5800 ns, 0.75·Ω_max, 500 shots):
+P(reach model optimum) = **0.94 / 0.95 / 0.99 / 0.96 / 0.89** on S_seed00–04 with feasibility 0.95–1.00 and
+0 % model gap everywhere; the random sampler sits at 0.007–0.011 and qubo-solver's own quantum pipeline at
+0.18–0.79 (and a 27 % model gap on S_seed04). Where P(reach C*) is low (S_seed03/04) it is the decomposition
+gap (15.6 % / 21.7 %: the closeness objective's optimum is not the CVRP optimum), reported as such. The pulse
+defaults in code are now the scan result (DERIVATIONS §6.6); the weights are unchanged (§4.1); the δ_f scan peaks
+at the fitted value; the slow-region scan is finishing. Rows from before each change keep their own labels
+(`[emb=generic]`, `|pulse=4000ns_Omega1.0(pre-scan)`), so every before/after pair is in results.csv.
+`cvrp/report.py` (figures) is being written. Everything is committed and synced to the Windows folder.
+
+**Open for Gate 2 (your decision, see the tier-M paragraph in the previous entry):** the one-hot encoding does
+not embed for K = 3; the overnight run can (a) measure M/L anyway on emu-mps and report honestly, (b) switch M/L
+to a K = 2 bisection (model change), or (c) spend the night on Track B for tier S.
+
+**Previous entry (15:50 ET).** M2 is through its three steps on tier S. (1) Embedding: the structure-aware
 polygon registers are now cached and committed (`embeddings/`), so Windows (qutip) and the sandbox
 (numpy-sv) sample the *same* register and agree to sampling noise; P(reach model optimum) with the baseline
 pulse is 0.90 / 0.84 / 0.65 on S_seed00/01/04 (generic embedder: 0.12 / 0.07 / 0.03; random: 0.0075).

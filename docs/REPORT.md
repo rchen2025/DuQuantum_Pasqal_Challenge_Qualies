@@ -78,21 +78,25 @@ noise, TV ≈ 0.05 at 500 shots); emu-mps for M/L with the bond dimension record
 <!-- RESULTS_TABLE -->
 | instance | method | feas. | model gap | CVRP gap | P(reach C*) | P(gap≤5%) | fidelity | backend |
 |---|---|---|---|---|---|---|---|---|
-| S_seed00 | ours | 0.99 | 0.0 % | 0.0 % | 0.90 | 0.90 | 0.26 | qutip |
+| S_seed00 | ours | 1.00 | 0.0 % | 0.0 % | 0.94 | 0.94 | 0.26 | qutip |
 | S_seed00 | ours, generic emb. | 0.22 | 0.0 % | 0.0 % | 0.13 | 0.13 | 0.95 | qutip |
 | S_seed00 | qubo-solver quantum | 1.00 | 0.0 % | 0.0 % | 0.78 | 0.78 | 0.12 | qs-quantum |
 | S_seed00 | qubo-solver tabu | 1.00 | 0.0 % | 0.0 % | 1.00 | 1.00 | undef. | qs-classical |
 | S_seed00 | random sampler | 0.04 | 0.0 % | 0.0 % | 0.01 | 0.01 | 0.95 | random |
-| S_seed01 | ours | 0.88 | 0.0 % | 0.0 % | 0.88 | 0.88 | 0.21 | qutip |
+| S_seed01 | ours | 0.95 | 0.0 % | 0.0 % | 0.95 | 0.95 | 0.21 | qutip |
 | S_seed01 | ours, generic emb. | 0.09 | 0.0 % | 0.0 % | 0.07 | 0.07 | 0.94 | qutip |
 | S_seed01 | qubo-solver quantum | 0.80 | 0.0 % | 0.0 % | 0.78 | 0.78 | 0.16 | qs-quantum |
 | S_seed01 | qubo-solver tabu | 1.00 | 0.0 % | 0.0 % | 1.00 | 1.00 | undef. | qs-classical |
 | S_seed01 | random sampler | 0.02 | 0.0 % | 0.0 % | 0.01 | 0.01 | 0.94 | random |
-| S_seed02 | ours (in-house SV) | 1.00 | 0.0 % | 0.0 % | 0.98 | 0.98 | 0.31 | numpy-sv |
+| S_seed02 | ours | 1.00 | 0.0 % | 0.0 % | 0.99 | 0.99 | 0.31 | qutip |
+| S_seed02 | qubo-solver quantum | 0.95 | 0.0 % | 0.0 % | 0.18 | 0.18 | 0.21 | qs-quantum |
+| S_seed02 | qubo-solver tabu | 1.00 | 0.0 % | 0.0 % | 1.00 | 1.00 | undef. | qs-classical |
 | S_seed02 | random sampler | 0.04 | 0.0 % | 0.0 % | 0.01 | 0.01 | 0.31 | random |
-| S_seed03 | ours (in-house SV) | 1.00 | 0.0 % | 15.6 % | 0.01 | 0.97 | 0.29 | numpy-sv |
+| S_seed03 | ours | 1.00 | 0.0 % | 15.6 % | 0.01 | 0.96 | 0.29 | qutip |
+| S_seed03 | qubo-solver quantum | 0.99 | 0.0 % | 15.6 % | 0.18 | 0.79 | 0.14 | qs-quantum |
+| S_seed03 | qubo-solver tabu | 1.00 | 0.0 % | 15.6 % | 0.00 | 1.00 | undef. | qs-classical |
 | S_seed03 | random sampler | 0.05 | 0.0 % | 15.6 % | 0.01 | 0.01 | 0.29 | random |
-| S_seed04 | ours | 0.99 | 0.0 % | 21.7 % | 0.09 | 0.62 | 0.32 | qutip |
+| S_seed04 | ours | 1.00 | 0.0 % | 21.7 % | 0.02 | 0.89 | 0.32 | qutip |
 | S_seed04 | ours, generic emb. | 0.06 | 0.0 % | 21.7 % | 0.00 | 0.03 | 0.95 | qutip |
 | S_seed04 | qubo-solver quantum | 1.00 | 27.3 % | 30.0 % | 0.00 | 0.00 | 0.19 | qs-quantum |
 | S_seed04 | qubo-solver tabu | 1.00 | 0.0 % | 21.7 % | 0.00 | 1.00 | undef. | qs-classical |
@@ -115,9 +119,9 @@ CPLEX unavailable). Decomposition gap (model optimum routed exactly vs $C^*$):
 <!-- /DECOMPOSITION_TABLE -->
 
 Reading: with the structure-aware register and the scanned pulse, the device returns the model-optimal clustering in
-≈ 90–98 % of raw shots on tier S (random sampler: 0.7–1 %; generic embedder: 7–13 %). Where P(reach $C^*$) is low with a
+89–99 % of raw shots on all five tier-S instances (random sampler: 0.7–1 %; generic embedder: 3–13 %). Where P(reach $C^*$) is low with a
 0 % model gap (S_seed03/04) the loss is the decomposition, not the device. qubo-solver's own pipeline (BLaDE + its drive
-shaper, 5940 ns) reaches 0.78 on two instances and fails on S_seed04; its classical tabu search finds every model optimum,
+shaper, 5940 ns) reaches 0.18–0.79 of the model optimum on four instances and fails on S_seed04 (27 % model gap); its classical tabu search finds every model optimum,
 and its default SA path does not (a single-start greedy descent at $T_0=5$ — we report a stated-parameter SA instead).
 
 # 6. What did not work
