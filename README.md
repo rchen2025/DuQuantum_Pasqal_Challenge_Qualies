@@ -10,15 +10,19 @@ truth; code follows it). Write-up: `docs/MODEL_WRITEUP.md`. Report: `report/repo
 
 ```bash
 python -m pip install -r requirements.txt       # exact pins (Python 3.11+; the hackathon venv is 3.14)
-make demo                                        # == validate instances, assert device limits, run one tier-S seed
-                                                 #    (random sampler + emulator), write out/*.json and results.csv
+python scripts/make.py demo                     # == validate instances, assert device limits, run S_seed00 with
+                                                #    the random sampler and pulser-simulation (qutip), 500 shots,
+                                                #    write out/demo/*.json and out/demo/results_demo.csv
 ```
-`make demo` runs `python -m cvrp.run --instance instances/S_seed00.json --formulation <ours> --backend qutip
---shots 500 --seed 0` and `python -m cvrp.results out/ -o results.csv`. Change `INSTANCE=`, `BACKEND=`
-(`qutip | emu-sv | emu-mps | random`), `SHOTS=`, `SEED=` on the make command line.
+(`make demo` is the same target for people with GNU make.) The demo runs
+`python -m cvrp.run --instance instances/S_seed00.json --formulation onehot-ub --embedder polygons --backend qutip
+--shots 500 --seed 0` — the headline row of `results.csv` (S_seed00, method `onehot-ub[emb=polygons]+qutip`) — using
+the committed register in `embeddings/`; change `INSTANCE=`, `BACKEND=` (`qutip | emu-sv | emu-mps | numpy-sv | random`),
+`SHOTS=`, `SEED=` on the command line. Emulator sampling is not seeded by Pulser's backends, so counts reproduce to
+sampling noise (TV ≈ 0.05 at 500 shots); the register, pulse and all classical numbers reproduce exactly.
 
-Other entry points: `make test` (pytest), `make deliverables` (D1–D5 pass/fail checklist), `make report`
-(pandoc → `report/report.pdf`, page count checked ≤ 4). All commands and rules: `CLAUDE.md`.
+Other entry points: `python scripts/make.py test | deliverables | report` (pytest; D1–D5 pass/fail checklist;
+figures + `report/report.pdf` with the page count checked ≤ 4). All commands and rules: `CLAUDE.md`.
 
 ## What is where
 | | |
