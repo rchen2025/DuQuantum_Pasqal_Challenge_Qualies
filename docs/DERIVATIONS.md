@@ -898,8 +898,9 @@ E_3 = -3\delta_f + 3U_{\text{clique}}\ (K=3),$$
 
 so the one-hot state $E_1$ is the clique ground state **only if** $0 < \delta_f < U_{\text{clique}}$. On tier S the
 one-hot-subspace fit of §5.7 returns δ_f = 33–38 rad/µs = 0.49–0.68 $U_{\text{clique}}$ (every cached S register,
-`scripts/fix_cached_delta.py --dry-run`), safely inside. On tier M the same fit is ill-conditioned (subspace
-residual 1.55 instead of 0.06–0.32) and ran to the device maximum, δ_f = 125.66 rad/µs = 2.28 $U_{\text{clique}}$:
+`scripts/fix_cached_delta.py --dry-run`), safely inside. On tier M the same fit is ill-conditioned (one-hot-subspace
+relative Frobenius error 0.96–1.55 against 0.25–0.57 on S, results.csv column `embedding_subspace_rel_frobenius`;
+energy-fit residual 38 against 0.06–0.32, Q-M1) and ran to the device maximum, δ_f = 125.66 rad/µs = 2.28 $U_{\text{clique}}$:
 the sweep then *rewards* two excitations per triangle, and the measured as-is row (M_seed00, emu-mps χ = 32)
 had 0 of 500 shots decodable — not a feasibility failure of the encoding but a wrong end point of the sweep.
 The embedder now enforces the bound: when the fit leaves $(0, 0.9\,U_{\text{clique}})$ it falls back to

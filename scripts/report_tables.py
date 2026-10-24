@@ -53,8 +53,9 @@ def main(argv=None):
     compact_groups = {"ours", "qsq", "qst"}
     rows = list(csv.DictReader((ROOT / a.results).open()))
     rows = [r for r in rows if r["repair"] == "none" and r["tier"] in a.tiers]
+    # the dash counts set pandoc's relative column widths: wide 'method' / 'backend', narrow numbers
     out = ["| instance | method | feas. | model gap | CVRP gap | P(reach C*) | P(gap≤5%) | fidelity | backend |",
-           "|---|---|---|---|---|---|---|---|---|"]
+           "|------|------------------------|----|------|------|------|------|-----|-----------|"]
     for inst in sorted({r["instance"] for r in rows}, key=lambda n: ({"S": 0, "M": 1, "L": 2}.get(n[0], 9), n)):
         done_groups = set()
         tier = inst.split("_")[0]
