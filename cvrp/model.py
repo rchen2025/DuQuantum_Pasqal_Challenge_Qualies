@@ -177,6 +177,7 @@ class WeightMargin:
     value: float
     ok_at_half: bool
     ok_at_double: bool
+    ok_at_zero: bool                        # True = this weight is not binding on this instance
     halvings_until_failure: Optional[int]   # None = still sound after `max_halvings` halvings
     max_halvings: int
 
@@ -243,7 +244,8 @@ class CheckReport:
             for m in self.penalty_margin:
                 h = ("never fails within %d halvings" % m.max_halvings if m.halvings_until_failure is None
                      else f"fails after {m.halvings_until_failure} halving(s) (x 1/{2 ** m.halvings_until_failure})")
-                L.append(f"    {m.weight}={m.value:g}: ok_at_half={m.ok_at_half} ok_at_double={m.ok_at_double}; {h}")
+                L.append(f"    {m.weight}={m.value:g}: ok_at_half={m.ok_at_half} ok_at_double={m.ok_at_double} "
+                         f"ok_at_zero={m.ok_at_zero}{' (not binding here)' if m.ok_at_zero else ''}; {h}")
         L.append(f"  => {'SOUND' if self.sound else 'NOT SOUND'}")
         return "\n".join(L)
 
@@ -393,6 +395,7 @@ def brute_force_check(f: Formulation, margins: bool = True, max_halvings: int = 
                 return _sound_with_weights(f, ww, opt_value, opt_clusterings, tol)
             ok_half = ok(0.5)
             ok_double = ok(2.0)
+            ok_zero = ok(0.0)
             fails_at: Optional[int] = None
             if not ok_half:
                 fails_at = 1
@@ -401,7 +404,7 @@ def brute_force_check(f: Formulation, margins: bool = True, max_halvings: int = 
                     if not ok(0.5 ** h):
                         fails_at = h
                         break
-            pm.append(WeightMargin(w, float(val), ok_half, ok_double, fails_at, max_halvings))
+            pm.append(WeightMargin(w, float(val), ok_half, ok_double, ok_zero, fails_at, max_halvings))
 
     return CheckReport(
         formulation=f.name, instance=f.inst.name, weights=dict(f.weights),
@@ -436,4 +439,7 @@ def _main(argv: List[str]) -> int:
 
 if __name__ == "__main__":
     import sys
-    sys.exit(_main(sys.argv[1:]))
+    # `python -m cvrp.model` runs this file as __main__; use the canonical module
+    # object so the formulations register into the same REGISTRY.
+    from cvrp.model import _main as _canonical_main
+    sys.exit(_canonical_main(sys.argv[1:]))
