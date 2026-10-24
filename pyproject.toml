@@ -1,0 +1,25 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "qopt"
+version = "0.1.0"
+description = "Analog neutral-atom QUBO optimisation toolkit on the Pasqal stack (hackathon)"
+requires-python = ">=3.10"
+dependencies = ["numpy>=1.26", "scipy>=1.11", "matplotlib>=3.8"]
+
+[project.optional-dependencies]
+pulser = ["pulser>=1.9.1"]                       # pulser-core + pulser-simulation (qutip) + pasqal-cloud
+emu = ["emu-sv>=2.10", "emu-mps>=2.10"]         # torch-based emulators (python >=3.11)
+baseline = ["qubo-solver>=0.9.1", "qoolqit>=1.4"]
+all = ["pulser>=1.9.1", "emu-sv>=2.10", "emu-mps>=2.10", "qubo-solver>=0.9.1", "qoolqit>=1.4", "pasqal-cloud>=0.24", "pytest", "python-dotenv"]
+dev = ["pytest"]
+
+[tool.setuptools.packages.find]
+include = ["qopt*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = ["slow: needs a real emulator / qubo-solver (skipped when not installed)"]
+addopts = "-q"
