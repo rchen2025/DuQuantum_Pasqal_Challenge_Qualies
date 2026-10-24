@@ -164,8 +164,9 @@ def score_counts(counts: Dict[str, int], f: Formulation, inst: Instance, mopt: O
         ref_clusterings.add(clustering_of(tuple(a)))
     if mopt is None:
         mopt = model_optimum(f)
-    opt_set = set(mopt.clusterings)
-    dec_cost, _ = route_exactly(inst, mopt.assignment)
+    # Decomposition cost: the model optimum routed exactly, minimised over every optimal clustering we know
+    # (the enumeration branch lists all of them; the DP branch only one, see model_optimum).
+    dec_cost = min(route_exactly(inst, _assignment_from(cl, inst.N))[0] for cl in mopt.clusterings)
 
     shots = sum(counts.values())
     rows: List[ShotRow] = []
@@ -195,7 +196,7 @@ def score_counts(counts: Dict[str, int], f: Formulation, inst: Instance, mopt: O
             rc = routed_cache[cl]
             cg = gap_percent(rc, C_ref)
             n_feas += cnt
-            if cl in opt_set:
+            if mg <= 1e-9:                      # reaches a model optimum (by value: robust to ties the DP did not list)
                 p_reach_model += cnt
             if cl in ref_clusterings or abs(rc - C_ref) <= 1e-6 * max(1.0, C_ref):
                 p_reach_cvrp += cnt
@@ -236,6 +237,14 @@ def score_counts(counts: Dict[str, int], f: Formulation, inst: Instance, mopt: O
               "objective": r.objective, "model_gap": r.model_gap, "cvrp_gap": r.cvrp_gap} for r in rows[:top]],
     )
     return m, rows
+
+
+def _assignment_from(cl: Clustering, N: int) -> Assignment:
+    a = [-1] * N
+    for k, g in enumerate(cl):
+        for i in g:
+            a[i] = k
+    return tuple(a)
 
 
 def random_counts(n_vars: int, shots: int, seed: int) -> Dict[str, int]:

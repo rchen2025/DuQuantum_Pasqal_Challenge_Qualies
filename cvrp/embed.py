@@ -360,7 +360,7 @@ def embed(
     if n > 1 and limits.max_radial_distance is not None:
         rad = float(np.sqrt((coords ** 2).sum(1)).max())
         if rad > limits.max_radial_distance + GEOM_TOL:
-            s = limits.max_radial_distance / rad
+            s = (limits.max_radial_distance - 1e-6) / rad   # Pulser's radius check is a strict '>' with no tolerance
             coords = coords * s
             alpha_val = alpha_val / s ** 6
             notes.append(f"register radius {rad:.3f} µm > {limits.max_radial_distance}: distances scaled x{s:.4f}, "

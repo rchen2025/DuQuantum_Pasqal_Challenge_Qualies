@@ -27,7 +27,7 @@ Tests: 80 pass (`scripts/run_tests.py`, pytest stand-in; real pytest once Window
 
 ## Current best rows (textbook = throwaway, random sampler only — NOT a result)
 S_seed00, textbook (14 atoms), random 2000 shots: feasible 4.5 % raw, best model gap 0 %, CVRP gap 0 %,
-P(reach ref) 0.006 raw / 0.066 with energy-descent repair. Textbook linear terms are non-uniform → flagged
+P(reach ref) 0.0065 raw (exact: 0.78 %) / 0.080 with energy-descent repair (feasible 31.7 % after repair). Textbook linear terms are non-uniform → flagged
 `device_faithful=False`; rel. Frobenius embedding error 0.55. This is the bar any quantum run must beat.
 
 ## Needs you
@@ -44,3 +44,6 @@ clusterings compared as sets.
 
 ## Open judge questions — see DERIVATIONS.md §7 (13 answered)
 Still open for §4: why linear terms are uniform in *our* formulation; how each weight was set and what breaks when halved/doubled.
+
+## Reviewer pass on items 0–6 (fresh context, 13:10)
+No blockers. Physics signs, Eq.(1)→QUBO mapping, textbook algebra (max err 3e-11 on 2000 random bitstrings), device-limit reading, exact DP (verified against brute force on 40 random instances) all confirmed. Fixed: one stale typed number (0.066 → 0.080), model-optimum tie handling in metrics (P(reach) by value), decomposition cost minimised over all optima, strict-radius rescale margin in embed, three wording slips in DERIVATIONS (§2.3 mean-h is our choice; §3.4 "2 of 8 clusterings"; §6.1 adiabatic criterion in Landau–Zener form).

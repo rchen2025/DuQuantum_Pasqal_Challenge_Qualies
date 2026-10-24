@@ -158,7 +158,8 @@ positive overall scale `α > 0` (multiplying every energy by `α` does not chang
 
 Everything that violates this must be *approximated* (and the approximation error reported) or
 *reformulated*. In particular, with a **global detuning, non-uniform linear terms collapse to their mean**:
-the device sees `h̄ = (1/n) Σ_i h_i` on every atom and the per-atom differences `h_i − h̄` are simply
+there is one δ for all atoms, so *we* must pick a single value; `cvrp.embed` sets it from the mean `h̄ = (1/n) Σ_i h_i`
+(a choice, flagged `linear_terms_uniform=False`, not device physics) and the per-atom differences `h_i − h̄` are simply
 lost — which is what kills the textbook formulation (§3.3).
 
 Two things that do **not** matter:
@@ -428,7 +429,7 @@ brute-force check: formulation='textbook' instance='toy-S-14' n_vars=14 (2^n = 1
 
 Here the clustering `{0,2}|{1,3}` (loads 8 and 5, objective 42.23) is cheaper than the optimum 67.97 but
 over capacity by one unit; it is kept out only by `B_w·1² > 25.74`, so `B_w/8 = 22.9` fails and
-`B_w/4 = 45.9` passes. Only 2 of 16 clusterings are feasible (feasible fraction 1.6 %).
+`B_w/4 = 45.9` passes. Only 2 of the 8 clusterings (4 of the 16 assignments) are capacity-feasible (feasible fraction of bitstrings 1.6 %).
 
 Tests enforcing all of this: `tests/test_model.py` (`test_brute_force_check_passes_on_tier_S_with_default_weights`,
 `test_halving_A_enough_times_breaks_the_penalty`, `test_capacity_weight_binds_on_some_seed_and_not_others`).
@@ -623,8 +624,8 @@ has its ground state at $|g\rangle$ (energy ≈ 0 versus ≈ $-\delta > 0$ for
 $|r\rangle$), and the interaction term only adds energy to states with excitations.
 So the many-body ground state of $H(0)$ is $|g\,g\cdots g\rangle$, exactly the state
 the machine prepares by default.  The adiabatic theorem then says: if $H(t)$ changes
-slowly compared with $1/\Delta_{\min}^2$ (Δ = instantaneous gap above the ground
-state), the system stays in the instantaneous ground state and ends in the ground
+slowly — sweep rate $|\dot\delta|$ small compared with $\Delta_{\min}^2$ (Δ = instantaneous gap above the ground
+state; Landau–Zener form, same statement as §6.4), the system stays in the instantaneous ground state and ends in the ground
 state of $H(T)$, which (Ω(T) = 0) is the minimiser of $E_{\text{dev}} = \alpha E_{\text{QUBO}}$.
 
 `default_delta_init` = $-\min\!\big(\max(|\delta_{\text{final}}|,\, 2\Omega_{\max}),\ \text{max\_abs\_detuning}\big)$:
@@ -761,7 +762,7 @@ model must not force exactly K non-empty groups (that would change the optimum).
 
 **Q-random. Why is the random sampler a serious baseline on tier S?** With 14 textbook variables the space
 has 16 384 strings and ~0.6 % of uniform samples already decode to the optimal clustering (`cvrp.run
---backend random`, 2000 shots: P(reach ref) = 0.006 raw, 0.066 after labelled energy-descent repair).
+--backend random`, 2000 shots, seed 0: P(reach ref) = 0.0065 raw — the exact uniform value is 2 labelings × 2⁶ slack states / 2¹⁴ = 0.78 % — and 0.080 after labelled energy-descent repair; record `out/S_seed00__textbook_random_repair-energy-descent__seed0.json`).
 Any quantum result on S must beat these numbers at equal shots or it says nothing; the brief asks for exactly
 this comparison (§9.2, "replace the quantum part with a random sampler"). → `cvrp/metrics.py`.
 
