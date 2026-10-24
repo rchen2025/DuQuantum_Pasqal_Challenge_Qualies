@@ -22,7 +22,7 @@ COLUMNS = [
     # identity
     "instance", "tier", "instance_seed", "method", "formulation", "seed", "shots",
     # labels the brief requires
-    "backend", "backend_version", "bond_dim", "peak_bond_dim", "dmm", "repair", "device", "device_faithful",
+    "backend", "backend_version", "bond_dim", "peak_bond_dim", "dmm", "repair", "embedder", "device", "device_faithful",
     # size / atom efficiency
     "n_vars", "atoms",
     # Table 3 metrics
@@ -32,7 +32,8 @@ COLUMNS = [
     "p_reach_reference", "p_reach_model_optimum",
     "p_model_gap_le_0pct", "p_model_gap_le_1pct", "p_model_gap_le_5pct", "p_model_gap_le_10pct",
     "p_cvrp_gap_le_5pct",
-    "embedding_fidelity_rel_frobenius", "embedding_worst_pair_rel_err", "embedding_alpha", "delta_final",
+    "embedding_fidelity_rel_frobenius", "embedding_worst_pair_rel_err", "embedding_subspace_rel_frobenius",
+    "realized_argmin_is_model_optimum", "realized_rank_of_model_optimum", "embedding_alpha", "delta_final",
     "reference_status", "cvrp_reference", "model_optimum", "model_n_optima",
     # best shot details
     "best_model_objective", "best_routed_cost", "best_assignment",
@@ -89,7 +90,8 @@ def rows_from_record(rec: Dict[str, Any], path: str = "") -> List[Dict[str, Any]
             "method": base, "formulation": form.get("formulation"), "seed": rec.get("seed"), "shots": m.get("shots"),
             "backend": rec.get("backend"), "backend_version": bp.get("version"),
             "bond_dim": bp.get("bond_dim"), "peak_bond_dim": bp.get("peak_bond_dim"),
-            "dmm": rec.get("dmm", False), "repair": repair, "device": rec.get("device"),
+            "dmm": rec.get("dmm", False), "repair": repair, "embedder": rec.get("embedder", fid.get("embedder", "generic")),
+            "device": rec.get("device"),
             "device_faithful": rec.get("device_faithful"),
             "n_vars": rec.get("n_vars"), "atoms": rec.get("atoms"),
             "feasibility_rate": m.get("feasible_rate"), "decodable_rate": m.get("decodable_rate"),
@@ -102,6 +104,9 @@ def rows_from_record(rec: Dict[str, Any], path: str = "") -> List[Dict[str, Any]
             "p_cvrp_gap_le_5pct": _g(m, "p_cvrp_gap_le", "5"),
             "embedding_fidelity_rel_frobenius": fid.get("rel_frobenius_offdiag"),
             "embedding_worst_pair_rel_err": fid.get("worst_pair_rel_error"),
+            "embedding_subspace_rel_frobenius": fid.get("subspace_rel_frobenius"),
+            "realized_argmin_is_model_optimum": _g(rec, "realized_register", "argmin_is_model_optimum"),
+            "realized_rank_of_model_optimum": _g(rec, "realized_register", "rank_of_model_optimum"),
             "embedding_alpha": emb.get("alpha"), "delta_final": emb.get("delta_final", pulse.get("delta_final")),
             "reference_status": m.get("reference_status"), "cvrp_reference": m.get("cvrp_reference"),
             "model_optimum": m.get("model_optimum"), "model_n_optima": m.get("model_n_optima"),
@@ -141,9 +146,9 @@ def write_csv(rows: List[Dict[str, Any]], path: str | Path) -> None:
             w.writerow({k: _fmt(r.get(k)) for k in COLUMNS})
 
 
-SUMMARY_COLS = ["instance", "method", "repair", "backend", "seed", "shots", "atoms", "feasibility_rate",
+SUMMARY_COLS = ["instance", "method", "repair", "seed", "shots", "atoms", "feasibility_rate",
                 "best_model_gap_pct", "best_cvrp_gap_pct", "p_reach_reference", "p_model_gap_le_5pct",
-                "embedding_fidelity_rel_frobenius", "reference_status"]
+                "embedding_fidelity_rel_frobenius", "realized_rank_of_model_optimum", "reference_status"]
 
 
 def write_md(rows: List[Dict[str, Any]], path: str | Path) -> str:

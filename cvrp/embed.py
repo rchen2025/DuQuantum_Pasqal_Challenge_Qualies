@@ -103,6 +103,12 @@ class FidelityReport:
     delta_final: float
     limit_violations: List[str] = field(default_factory=list)
     notes: List[str] = field(default_factory=list)
+    # Optional, filled by structure-aware embedders (cvrp.embed_onehot): fidelity measured on the
+    # subspace where the model lives (one-hot strings), see DERIVATIONS §5.7.
+    embedder: str = "generic"
+    subspace_rel_frobenius: Optional[float] = None
+    subspace_worst_pair_rel_error: Optional[float] = None
+    subspace_anisotropy: Optional[float] = None
 
     @property
     def ok(self) -> bool:
@@ -118,6 +124,10 @@ class FidelityReport:
             f"geometry: min distance {self.min_distance:.3f} µm, max radius {self.max_radius:.3f} µm",
             f"linear terms uniform: {self.linear_terms_uniform} (spread {self.linear_spread:.3g})",
         ]
+        if self.subspace_rel_frobenius is not None:
+            lines.append(f"one-hot-subspace fidelity ({self.embedder}): rel Frobenius = {self.subspace_rel_frobenius:.4f}, "
+                         f"worst pair rel error = {self.subspace_worst_pair_rel_error:.4f}, "
+                         f"cross-vehicle anisotropy = {self.subspace_anisotropy:.4f}")
         if self.limit_violations:
             lines.append("LIMIT VIOLATIONS: " + "; ".join(self.limit_violations))
         lines += self.notes

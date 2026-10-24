@@ -125,8 +125,8 @@ def parse_kv(s: Optional[str]) -> Dict[str, float]:
     return out
 
 
-def method_label(formulation: str, backend: str, repair: str) -> str:
-    base = f"{formulation}+{backend}"
+def method_label(formulation: str, backend: str, repair: str, embedder: str = "generic") -> str:
+    base = f"{formulation}[emb={embedder}]+{backend}"
     return base if repair == "none" else f"{base}+repair:{repair}"
 
 
@@ -140,7 +140,17 @@ def run_one(inst: Instance, formulation: str, backend: str, shots: int, seed: in
     J, h = f.couplings(), f.linear()
 
     # --- embedding (raises on negative couplings) ------------------------- #
-    emb: Embedding = embed(J, h, seed=seed, **(embed_kw or {}))
+    embed_kw = dict(embed_kw or {})
+    embedder = embed_kw.pop("embedder", "generic")
+    if embedder == "generic":
+        emb: Embedding = embed(J, h, seed=seed, **embed_kw)
+    elif embedder == "polygons":
+        from .embed_onehot import embed_onehot
+        if f.n_vars != inst.N * inst.K:
+            raise ValueError("embedder=polygons needs a one-hot formulation with N*K variables")
+        emb = embed_onehot(J, h, inst.N, inst.K, seed=seed, **embed_kw)
+    else:
+        raise ValueError(f"unknown embedder {embedder!r} (generic | polygons)")
     fid = emb.fidelity
     device_faithful = bool(fid.linear_terms_uniform and not fid.limit_violations)
 
@@ -178,7 +188,7 @@ def run_one(inst: Instance, formulation: str, backend: str, shots: int, seed: in
         "realized_register": realized,
         "instance": inst.name, "tier": inst.tier, "instance_seed": inst.seed,
         "formulation": f.describe(), "n_vars": f.n_vars, "atoms": emb.n,
-        "method": method_label(formulation, backend, repair), "backend": backend, "seed": seed, "shots": shots,
+        "method": method_label(formulation, backend, repair, embedder), "backend": backend, "embedder": embedder, "seed": seed, "shots": shots,
         "repair": repair, "dmm": False, "device": emb.device, "device_faithful": device_faithful,
         "embedding": emb.to_dict(), "pulse": p.to_dict(), "sequence_duration_ns": seq.get_duration(),
         "versions": {"python": platform.python_version(), "pulser": __import__("pulser").__version__},
@@ -261,6 +271,7 @@ def main(argv=None):
     ap.add_argument("--pulse", default="", help="pulse overrides, e.g. duration_ns=3000,omega_scale=0.8")
     ap.add_argument("--slow", nargs=3, type=float, metavar=("CENTRE", "WIDTH", "FACTOR"), default=None)
     ap.add_argument("--bond-dim", type=int, default=64)
+    ap.add_argument("--embedder", default="generic", help="generic | polygons (structure-aware one-hot embedding, cvrp.embed_onehot)")
     ap.add_argument("--repair", default="none", help="none | energy-descent (labelled separately)")
     ap.add_argument("--counts", default=None, help="JSON file bitstring->count to score instead of sampling")
     ap.add_argument("--dry-run", action="store_true")
@@ -275,7 +286,8 @@ def main(argv=None):
         pulse_over["slow_region"] = tuple(a.slow)
     counts = json.loads(Path(a.counts).read_text()) if a.counts else None
     rec = run_one(inst, a.formulation, a.backend, a.shots, a.seed, weights=parse_kv(a.weights),
-                  pulse_overrides=pulse_over, repair=a.repair, bond_dim=a.bond_dim, counts=counts, dry_run=a.dry_run)
+                  pulse_overrides=pulse_over, repair=a.repair, bond_dim=a.bond_dim, counts=counts, dry_run=a.dry_run,
+                  embed_kw={"embedder": a.embedder})
     pth = save_record(rec, a.out)
     print(f"record -> {pth}")
 
