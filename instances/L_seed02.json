@@ -125,29 +125,29 @@
   "name": "L_seed02",
   "reference": {
     "best_assignment": [
+      3,
+      1,
+      1,
+      3,
       0,
-      1,
-      1,
-      0,
-      2,
-      1,
-      2,
-      2,
       1,
       0,
       0,
       1,
-      2,
-      2,
-      0
+      3,
+      3,
+      1,
+      0,
+      0,
+      3
     ],
     "best_clusters": [
       [
-        0,
-        3,
-        9,
-        10,
-        14
+        4,
+        6,
+        7,
+        12,
+        13
       ],
       [
         1,
@@ -157,32 +157,296 @@
         11
       ],
       [
-        4,
-        6,
-        7,
-        12,
-        13
+        0,
+        3,
+        9,
+        10,
+        14
       ]
     ],
-    "cost": 424.65715319905655,
-    "method": "brute_force: exhaustive set-partition DP over all capacity-feasible clusterings x exact Held-Karp TSP per cluster",
+    "cost": 424.65715319905553,
+    "found_by": "constrained-sa",
+    "method": "brief \u00a79.3 levels 2\u20133: qubo-solver simulated_annealing on the onehot-ub QUBO (max solve time 60 s) and constrained simulated annealing (10 restarts, 60 s total); C* = best known of the two",
     "n_distinct_optima": 1,
-    "n_feasible_clusters": 9984,
+    "n_distinct_optima_note": "distinct best-known clusterings found by the two solvers (a lower bound)",
     "n_vehicles_used": 3,
-    "reference_status": "proven_optimum",
+    "qubosolver_best_assignment": [
+      0,
+      1,
+      2,
+      1,
+      2,
+      1,
+      3,
+      3,
+      2,
+      1,
+      0,
+      2,
+      0,
+      3,
+      1
+    ],
+    "qubosolver_candidates": [
+      {
+        "assignment": [
+          1,
+          2,
+          3,
+          1,
+          0,
+          2,
+          0,
+          3,
+          3,
+          2,
+          1,
+          0,
+          0,
+          3,
+          1
+        ],
+        "bits": "010000100001010010000010100000010001001001001000100000010100",
+        "cvrp_cost": 546.672995281138,
+        "feasible": true,
+        "model_objective": 687.0363134266094,
+        "qubo_cost": -47804.38671875
+      },
+      {
+        "assignment": [
+          2,
+          3,
+          0,
+          2,
+          0,
+          3,
+          2,
+          0,
+          1,
+          3,
+          0,
+          1,
+          1,
+          1,
+          2
+        ],
+        "bits": "001000011000001010000001001010000100000110000100010001000010",
+        "cvrp_cost": 535.9803525470044,
+        "feasible": true,
+        "model_objective": 711.5690730931925,
+        "qubo_cost": -47779.8515625
+      },
+      {
+        "assignment": [
+          3,
+          2,
+          0,
+          2,
+          1,
+          2,
+          0,
+          0,
+          3,
+          3,
+          1,
+          3,
+          1,
+          0,
+          2
+        ],
+        "bits": "000100101000001001000010100010000001000101000001010010000010",
+        "cvrp_cost": 532.2336613562612,
+        "feasible": true,
+        "model_objective": 746.7588746181043,
+        "qubo_cost": -47758.18359375
+      },
+      {
+        "assignment": [
+          0,
+          3,
+          2,
+          3,
+          1,
+          0,
+          2,
+          2,
+          1,
+          0,
+          3,
+          1,
+          1,
+          2,
+          0
+        ],
+        "bits": "100000010010000101001000001000100100100000010100010000101000",
+        "cvrp_cost": 554.4776275143711,
+        "feasible": true,
+        "model_objective": 708.9238962320208,
+        "qubo_cost": -47728.38671875
+      },
+      {
+        "assignment": [
+          0,
+          3,
+          1,
+          3,
+          2,
+          2,
+          2,
+          0,
+          1,
+          0,
+          0,
+          1,
+          1,
+          2,
+          3
+        ],
+        "bits": "100000010100000100100010001010000100100010000100010000100001",
+        "cvrp_cost": 588.2768439587842,
+        "feasible": true,
+        "model_objective": 760.3594127960502,
+        "qubo_cost": -47722.046875
+      },
+      {
+        "assignment": [
+          0,
+          0,
+          1,
+          2,
+          3,
+          0,
+          0,
+          3,
+          1,
+          2,
+          0,
+          1,
+          1,
+          3,
+          2
+        ],
+        "bits": "100010000100001000011000100000010100001010000100010000010010",
+        "cvrp_cost": 534.5196649826502,
+        "feasible": true,
+        "model_objective": 775.0528102169011,
+        "qubo_cost": -47720.87890625
+      },
+      {
+        "assignment": [
+          1,
+          0,
+          1,
+          3,
+          2,
+          2,
+          1,
+          2,
+          0,
+          3,
+          2,
+          0,
+          0,
+          1,
+          3
+        ],
+        "bits": "010010000100000100100010010000101000000100101000100001000001",
+        "cvrp_cost": 591.693896125364,
+        "feasible": true,
+        "model_objective": 802.9087711510844,
+        "qubo_cost": -47711.0625
+      },
+      {
+        "assignment": [
+          1,
+          2,
+          0,
+          2,
+          3,
+          2,
+          1,
+          3,
+          0,
+          1,
+          2,
+          0,
+          0,
+          3,
+          1
+        ],
+        "bits": "010000101000001000010010010000011000010000101000100000010100",
+        "cvrp_cost": 568.1680282184816,
+        "feasible": true,
+        "model_objective": 790.2295380347946,
+        "qubo_cost": -47710.20703125
+      },
+      {
+        "assignment": [
+          2,
+          1,
+          0,
+          1,
+          2,
+          1,
+          3,
+          3,
+          0,
+          3,
+          2,
+          0,
+          2,
+          0,
+          1
+        ],
+        "bits": "001001001000010000100100000100011000000100101000001010000100",
+        "cvrp_cost": 549.1249697250164,
+        "feasible": true,
+        "model_objective": 740.5910815350228,
+        "qubo_cost": -47705.7421875
+      },
+      {
+        "assignment": [
+          0,
+          2,
+          1,
+          2,
+          3,
+          0,
+          3,
+          1,
+          1,
+          0,
+          3,
+          3,
+          1,
+          3,
+          2
+        ],
+        "bits": "100000100100001000011000000101000100100000010001010000010010",
+        "cvrp_cost": 591.3540724496327,
+        "feasible": true,
+        "model_objective": 767.3018707019198,
+        "qubo_cost": -47701.57421875
+      }
+    ],
+    "qubosolver_cost": 521.6536276169115,
+    "qubosolver_model_objective": 754.7485271172932,
+    "qubosolver_n_candidates": 500,
+    "qubosolver_n_feasible_candidates": 500,
+    "reference_status": "best_known",
     "route_lengths": [
-      129.94960054173268,
-      188.8935962587861,
       105.81395639853781,
-      0.0
+      188.8935962587861,
+      0.0,
+      129.94960054173268
     ],
     "routes": [
       [
-        10,
-        0,
-        14,
-        3,
-        9
+        7,
+        6,
+        13,
+        12,
+        4
       ],
       [
         5,
@@ -191,14 +455,14 @@
         11,
         2
       ],
+      [],
       [
-        7,
-        6,
-        13,
-        12,
-        4
-      ],
-      []
+        10,
+        0,
+        14,
+        3,
+        9
+      ]
     ],
     "sa_best_assignment": [
       3,
@@ -227,7 +491,7 @@
         "final_temp": 0.009969,
         "iterations": 22755,
         "seed": 0,
-        "time_s": 0.0767
+        "time_s": 0.0708
       },
       {
         "accepted": 451,
@@ -235,7 +499,7 @@
         "final_temp": 0.009969,
         "iterations": 22755,
         "seed": 1,
-        "time_s": 0.0874
+        "time_s": 0.0756
       },
       {
         "accepted": 517,
@@ -243,7 +507,7 @@
         "final_temp": 0.009969,
         "iterations": 22755,
         "seed": 2,
-        "time_s": 0.0782
+        "time_s": 0.0717
       },
       {
         "accepted": 480,
@@ -251,7 +515,7 @@
         "final_temp": 0.009969,
         "iterations": 22755,
         "seed": 3,
-        "time_s": 0.0814
+        "time_s": 0.0733
       },
       {
         "accepted": 478,
@@ -259,7 +523,7 @@
         "final_temp": 0.009969,
         "iterations": 22755,
         "seed": 4,
-        "time_s": 0.0787
+        "time_s": 0.0729
       },
       {
         "accepted": 477,
@@ -267,7 +531,7 @@
         "final_temp": 0.009969,
         "iterations": 22755,
         "seed": 5,
-        "time_s": 0.0788
+        "time_s": 0.075
       },
       {
         "accepted": 516,
@@ -275,7 +539,7 @@
         "final_temp": 0.009969,
         "iterations": 22755,
         "seed": 6,
-        "time_s": 0.0781
+        "time_s": 0.0799
       },
       {
         "accepted": 513,
@@ -283,7 +547,7 @@
         "final_temp": 0.009969,
         "iterations": 22755,
         "seed": 7,
-        "time_s": 0.0867
+        "time_s": 0.0772
       },
       {
         "accepted": 438,
@@ -291,7 +555,7 @@
         "final_temp": 0.009969,
         "iterations": 22755,
         "seed": 8,
-        "time_s": 0.0797
+        "time_s": 0.0708
       },
       {
         "accepted": 506,
@@ -299,16 +563,38 @@
         "final_temp": 0.009969,
         "iterations": 22755,
         "seed": 9,
-        "time_s": 0.1071
+        "time_s": 0.0683
       }
     ],
     "solver_settings": {
-      "brute_force": {
-        "algorithm": "set-partition DP f[k][S] = min_R cost[R] + f[k-1][S\\R], R containing lowest(S); cost[R] = Held-Karp tour if load(R) <= Q else inf",
-        "counts": "distinct optimal clusterings (vehicle relabelings identified)",
-        "tie_tolerance": 1e-09
+      "cplex": "not available (package `cplex` not importable)",
+      "qubo_solver": {
+        "algorithm": "simulated_annealing (cplex not importable)",
+        "convention_check": {
+          "max_abs_diff": 0.015633453789632767,
+          "n_checked": 34,
+          "qs_float_dtype": "torch.float32",
+          "tol": 8.70789512058312
+        },
+        "max_iter": 2000000,
+        "note": "qubosolver.solving.simulated_annealing.solve, vectorized batch of 10 starts from torch.Generator(0); one time budget for the batch",
+        "package": "qubo-solver",
+        "qubo": "onehot-ub penalized QUBO, 60 variables, weights {\"lam2\": 2.254612971721314, \"A\": 3362.9276617620153}",
+        "restarts": 10,
+        "sa_alpha": "geometric, (Tf/T0)^(1/max_iter), set by qubo-solver",
+        "sa_final_temp": 3.3629276617620154,
+        "sa_initial_temp": 3362.9276617620153,
+        "sa_time_limit_s": 60.0,
+        "seed_info": {
+          "seed": 0,
+          "seeder": "qubosolver.utils._random.manual_seed"
+        },
+        "seeds": [
+          0
+        ],
+        "time_limit_s": 60.0,
+        "version": "0.9.1"
       },
-      "cplex": "not available",
       "sa": {
         "max_iter": 50000,
         "moves": "reassign one customer (p=0.5) or swap two customers of different vehicles (p=0.5); moves that overload a vehicle are rejected",
@@ -318,7 +604,7 @@
         "sa_alpha": 0.995,
         "sa_final_temp": 0.01,
         "sa_initial_temp": 20.0,
-        "sa_time_limit": 10.0,
+        "sa_time_limit": 6.0,
         "seeds": [
           0,
           1,
@@ -335,10 +621,8 @@
       }
     },
     "timing_s": {
-      "exact": 1.3094,
-      "partition_dp": 1.2619,
-      "sa_total": 0.8353,
-      "tsp_table": 0.0468
+      "qubo_solver": 68.898,
+      "sa_total": 0.7868
     }
   },
   "rho": 0.6,

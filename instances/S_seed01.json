@@ -60,42 +60,141 @@
   "reference": {
     "agree": true,
     "best_assignment": [
-      0,
-      0,
       1,
-      1
+      1,
+      0,
+      0
     ],
     "best_clusters": [
       [
-        0,
-        1
-      ],
-      [
         2,
         3
+      ],
+      [
+        0,
+        1
       ]
     ],
+    "brute_force_check": {
+      "cost": 245.01975743606874,
+      "method": "exhaustive set-partition DP x exact TSP (tier S only, brief \u00a79.3: 'run both ... and check that they agree')",
+      "n_distinct_optima": 1,
+      "time_s": 0.0005
+    },
     "brute_force_naive_cost": 245.01975743606874,
-    "brute_force_naive_n_distinct_optima": 1,
-    "brute_force_naive_n_feasible_assignments": 4,
     "cost": 245.01975743606874,
-    "method": "brute_force: exhaustive set-partition DP over all capacity-feasible clusterings x exact Held-Karp TSP per cluster",
+    "found_by": "qubo-solver",
+    "method": "brief \u00a79.3 levels 2\u20133: qubo-solver simulated_annealing on the onehot-ub QUBO (max solve time 60 s) and constrained simulated annealing (10 restarts, 60 s total); C* = best known of the two",
     "n_distinct_optima": 1,
-    "n_feasible_clusters": 9,
+    "n_distinct_optima_note": "distinct best-known clusterings found by the two solvers (a lower bound)",
     "n_vehicles_used": 2,
-    "reference_status": "proven_optimum",
+    "qubosolver_best_assignment": [
+      1,
+      1,
+      0,
+      0
+    ],
+    "qubosolver_candidates": [
+      {
+        "assignment": [
+          1,
+          1,
+          0,
+          0
+        ],
+        "bits": "01011010",
+        "cvrp_cost": 245.01975743606874,
+        "feasible": true,
+        "model_objective": 88.36975569172125,
+        "qubo_cost": -1117.996826171875
+      },
+      {
+        "assignment": [
+          0,
+          0,
+          1,
+          1
+        ],
+        "bits": "10100101",
+        "cvrp_cost": 245.01975743606874,
+        "feasible": true,
+        "model_objective": 88.36975569172125,
+        "qubo_cost": -1117.996826171875
+      },
+      {
+        "bits": "01101001",
+        "feasible": false,
+        "qubo_cost": -1075.60986328125
+      },
+      {
+        "bits": "10010110",
+        "feasible": false,
+        "qubo_cost": -1075.60986328125
+      },
+      {
+        "assignment": [
+          1,
+          0,
+          1,
+          0
+        ],
+        "bits": "01100110",
+        "cvrp_cost": 300.1065075138848,
+        "feasible": true,
+        "model_objective": 143.45650576953733,
+        "qubo_cost": -1062.9100341796875
+      },
+      {
+        "assignment": [
+          0,
+          1,
+          0,
+          1
+        ],
+        "bits": "10011001",
+        "cvrp_cost": 300.1065075138848,
+        "feasible": true,
+        "model_objective": 143.45650576953733,
+        "qubo_cost": -1062.9100341796875
+      },
+      {
+        "bits": "10101001",
+        "feasible": false,
+        "qubo_cost": -1023.5633544921875
+      },
+      {
+        "bits": "01010110",
+        "feasible": false,
+        "qubo_cost": -1023.5633544921875
+      },
+      {
+        "bits": "01100101",
+        "feasible": false,
+        "qubo_cost": -1022.7533569335938
+      },
+      {
+        "bits": "10011010",
+        "feasible": false,
+        "qubo_cost": -1022.7533569335938
+      }
+    ],
+    "qubosolver_cost": 245.01975743606874,
+    "qubosolver_model_objective": 88.36975569172125,
+    "qubosolver_n_candidates": 51,
+    "qubosolver_n_feasible_candidates": 4,
+    "reference_status": "best_known",
     "route_lengths": [
-      139.08287202149708,
-      105.93688541457165
+      105.93688541457165,
+      139.08287202149708
     ],
     "routes": [
       [
-        0,
-        1
-      ],
-      [
         3,
         2
+      ],
+      [
+        0,
+        1
       ]
     ],
     "sa_best_assignment": [
@@ -114,7 +213,7 @@
         "final_temp": 0.009969,
         "iterations": 6068,
         "seed": 0,
-        "time_s": 0.0207
+        "time_s": 0.022
       },
       {
         "accepted": 0,
@@ -122,7 +221,7 @@
         "final_temp": 0.009969,
         "iterations": 6068,
         "seed": 1,
-        "time_s": 0.0198
+        "time_s": 0.0222
       },
       {
         "accepted": 2,
@@ -130,7 +229,7 @@
         "final_temp": 0.009969,
         "iterations": 6068,
         "seed": 2,
-        "time_s": 0.0185
+        "time_s": 0.022
       },
       {
         "accepted": 4,
@@ -138,7 +237,7 @@
         "final_temp": 0.009969,
         "iterations": 6068,
         "seed": 3,
-        "time_s": 0.0188
+        "time_s": 0.0215
       },
       {
         "accepted": 2,
@@ -146,7 +245,7 @@
         "final_temp": 0.009969,
         "iterations": 6068,
         "seed": 4,
-        "time_s": 0.0187
+        "time_s": 0.0218
       },
       {
         "accepted": 2,
@@ -154,7 +253,7 @@
         "final_temp": 0.009969,
         "iterations": 6068,
         "seed": 5,
-        "time_s": 0.019
+        "time_s": 0.0235
       },
       {
         "accepted": 0,
@@ -162,7 +261,7 @@
         "final_temp": 0.009969,
         "iterations": 6068,
         "seed": 6,
-        "time_s": 0.0188
+        "time_s": 0.0218
       },
       {
         "accepted": 0,
@@ -170,7 +269,7 @@
         "final_temp": 0.009969,
         "iterations": 6068,
         "seed": 7,
-        "time_s": 0.0196
+        "time_s": 0.0229
       },
       {
         "accepted": 2,
@@ -178,7 +277,7 @@
         "final_temp": 0.009969,
         "iterations": 6068,
         "seed": 8,
-        "time_s": 0.0205
+        "time_s": 0.023
       },
       {
         "accepted": 4,
@@ -186,16 +285,38 @@
         "final_temp": 0.009969,
         "iterations": 6068,
         "seed": 9,
-        "time_s": 0.0183
+        "time_s": 0.0232
       }
     ],
     "solver_settings": {
-      "brute_force": {
-        "algorithm": "set-partition DP f[k][S] = min_R cost[R] + f[k-1][S\\R], R containing lowest(S); cost[R] = Held-Karp tour if load(R) <= Q else inf",
-        "counts": "distinct optimal clusterings (vehicle relabelings identified)",
-        "tie_tolerance": 1e-09
+      "cplex": "not available (package `cplex` not importable)",
+      "qubo_solver": {
+        "algorithm": "simulated_annealing (cplex not importable)",
+        "convention_check": {
+          "max_abs_diff": 6.915518861205783e-05,
+          "n_checked": 34,
+          "qs_float_dtype": "torch.float32",
+          "tol": 0.06240986213992717
+        },
+        "max_iter": 2000000,
+        "note": "qubosolver.solving.simulated_annealing.solve, vectorized batch of 10 starts from torch.Generator(0); one time budget for the batch",
+        "package": "qubo-solver",
+        "qubo": "onehot-ub penalized QUBO, 8 variables, weights {\"lam2\": 2.157356302600244, \"A\": 318.8504952497693}",
+        "restarts": 10,
+        "sa_alpha": "geometric, (Tf/T0)^(1/max_iter), set by qubo-solver",
+        "sa_final_temp": 0.31885049524976933,
+        "sa_initial_temp": 318.8504952497693,
+        "sa_time_limit_s": 60.0,
+        "seed_info": {
+          "seed": 0,
+          "seeder": "qubosolver.utils._random.manual_seed"
+        },
+        "seeds": [
+          0
+        ],
+        "time_limit_s": 60.0,
+        "version": "0.9.1"
       },
-      "cplex": "not available",
       "sa": {
         "max_iter": 50000,
         "moves": "reassign one customer (p=0.5) or swap two customers of different vehicles (p=0.5); moves that overload a vehicle are rejected",
@@ -205,7 +326,7 @@
         "sa_alpha": 0.995,
         "sa_final_temp": 0.01,
         "sa_initial_temp": 20.0,
-        "sa_time_limit": 10.0,
+        "sa_time_limit": 6.0,
         "seeds": [
           0,
           1,
@@ -222,11 +343,8 @@
       }
     },
     "timing_s": {
-      "exact": 0.0006,
-      "naive_brute_force": 0.0005,
-      "partition_dp": 0.0002,
-      "sa_total": 0.1945,
-      "tsp_table": 0.0003
+      "qubo_solver": 64.535,
+      "sa_total": 0.2259
     }
   },
   "rho": 0.8571428571428571,
