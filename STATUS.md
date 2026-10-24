@@ -1,4 +1,21 @@
-# STATUS — Sat 2026-10-24, 17:12 ET (hackathon day; freeze Sun 11:00 ET)
+# STATUS — Sat 2026-10-24, 17:40 ET (hackathon day; freeze Sun 11:00 ET)
+
+**17:40 ET.** Reference values are being switched to the brief's §9.3 route at Richard's request: C* now comes
+from qubo-solver's classical solver on the `onehot-ub` QUBO (CPLEX if importable, else its SA with stated
+parameters) under a **60 s max solve time**, plus our constrained SA with the same budget — best known of the
+two, `reference_status = best_known`, every setting in the instance JSON (`scripts/reference_qubosolver.py`,
+lane b job 200, running). Tier S keeps the brute-force agreement check the brief demands; M/L use no
+exhaustive search. Afterwards `scripts/rescore_records.py` re-scores every record against the new blocks and
+results.csv is regenerated (if the best-known values equal the earlier DP optima — expected — no gap or
+P(reach) changes, only the status column). Also landed: tier-M rows in results.csv (64 rows): M_seed00 as-is
+on emu-mps χ=32 — **0/500 feasible, gaps undefined**, model optimum at realised rank 10 474; tabu on
+M_seed01/02 reaches feasible clusterings 17.6 % / 2.8 % above C*; random sampler 0/2000 feasible. Job 070
+(qubo-solver quantum on M, uncapped χ > 300, ~50 s/step) was killed after 80 min — a χ-capped version will be
+re-queued after the as-is M/L rows (100/110/120, now running on the main lane). Report editor pass 1 is in
+(`docs/REPORT.md` restructured, 4 pages). Track B: a standalone slice (two routing encodings, exhaustive
+n ≤ 4 checks, 10-atom pilot) is being built in `routing/` by a subagent that owns only that package; it enters
+the report only if Richard says so at Gate 2 — Track A stays first.
+
 
 **17:12 ET.** Two runner lanes now (`win_runner.bat` heavy, `win_runner_lane.bat` light). Job 080 landed on qutip:
 `onehot-ub-tight` ablation P(reach) 0.03 / 0.52 / 0.94 on S_seed00/01/04 (sandbox SV: 0.03 / 0.56 / 0.96) and

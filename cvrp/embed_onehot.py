@@ -364,35 +364,44 @@ def embed_onehot(J: np.ndarray, h: np.ndarray, N: int, K: int, device: Any = Non
     # polygons of the closest violating pair apart along the line joining their centres (tiny moves; the
     # soft hinge normally leaves nothing to do).  Pulser rejects any pair below 5 µm, so this is not optional.
     owner = np.repeat(np.arange(N), K)
-    for _ in range(500):
+    c = c - c.mean(0)
+    pts = atom_coords(c, th, K, side)
+    # Hard guarantee of the device radius too (Pulser's check is a strict '>' from the ORIGIN with no
+    # tolerance): alternate the two projections — push the closest violating pair of polygons apart along
+    # the line joining their centres, pull the polygon owning the outermost atom radially inwards by its
+    # excess — until both constraints hold.  Each move is tiny; the soft hinges normally leave nothing to do.
+    r_lim = (r_max - 2e-3) if r_max is not None else np.inf
+    for _ in range(5000):
         pts = atom_coords(c, th, K, side)
         _, d = _pairwise(pts)
         d = np.where(owner[:, None] != owner[None, :], d, np.inf)
         i, j = np.unravel_index(int(np.argmin(d)), d.shape)
-        if d[i, j] >= d_min * (1 + 2e-3):
+        rad = np.sqrt((pts ** 2).sum(1))
+        k = int(np.argmax(rad))
+        sep_ok = d[i, j] >= d_min * (1 + 2e-3)
+        rad_ok = rad[k] <= r_lim
+        if sep_ok and rad_ok:
             break
-        a, b = owner[i], owner[j]
-        v = c[a] - c[b]
-        nv = np.linalg.norm(v)
-        v = v / nv if nv > 1e-9 else np.array([1.0, 0.0])
-        push = 0.5 * (d_min * (1 + 3e-3) - d[i, j])
-        c[a] += push * v
-        c[b] -= push * v
-        notes_push = True
+        if not rad_ok:
+            a = owner[k]
+            u = pts[k] / rad[k]
+            c[a] -= (rad[k] - r_lim + 1e-3) * u
+            notes_push = True
+        if not sep_ok:
+            a, b = owner[i], owner[j]
+            v = c[a] - c[b]
+            nv = np.linalg.norm(v)
+            v = v / nv if nv > 1e-9 else np.array([1.0, 0.0])
+            push = 0.5 * (d_min * (1 + 3e-3) - d[i, j])
+            c[a] += push * v
+            c[b] -= push * v
+            notes_push = True
     pts = atom_coords(c, th, K, side)
-    pts = pts - pts.mean(0)
-    # Hard guarantee of the device radius (Pulser's check is a strict '>' with no tolerance): shrink the
-    # polygon CENTRES towards the origin until every atom is inside; polygons keep their 5 µm side.
-    if r_max is not None:
-        for _ in range(50):
-            rad = float(np.sqrt((pts ** 2).sum(1)).max())
-            if rad <= r_max - 1e-3:
-                break
-            c = c * ((r_max - 2e-3) / rad)
-            pts = atom_coords(c, th, K, side)
-            pts = pts - pts.mean(0)
-        if float(np.sqrt((pts ** 2).sum(1)).max()) > r_max - 1e-3:
-            notes.append("register still exceeds the device radius after shrinking centres (polygons too large for N)")
+    _, d = _pairwise(pts)
+    d = np.where(owner[:, None] != owner[None, :], d, np.inf)
+    if float(d.min()) < d_min or (r_max is not None and float(np.sqrt((pts ** 2).sum(1)).max()) > r_max):
+        notes.append("register violates the device's min separation / radius after 5000 projection steps "
+                     "(polygons too large for N); Pulser will reject it")
 
     # --- reports ------------------------------------------------------------------------------ #
     U = coupling_matrix(pts, C6)

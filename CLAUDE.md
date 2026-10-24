@@ -12,7 +12,8 @@ pytest -q                                                   # all tests (emulato
 python scripts/run_tests.py [pattern]                       # pytest stand-in for sandboxes without pytest
 python scripts/device_limits.py --assert-brief              # pulser AnalogDevice == brief §3.1 table (gate)
 python -m cvrp.instances --out instances/                   # D3: generate seeded instances (certificate first)
-python -m cvrp.reference instances/                         # D3: exact references + SA cross-check -> JSON
+python scripts/reference_qubosolver.py instances/ --time-limit 60  # D3: §9.3 references = qubo-solver (cplex|SA, max solve time) + constrained SA, best known; tier S brute-force-checked
+python scripts/rescore_records.py out/m1 out/m2 out/m3 out/m4 out/m_tier   # re-score run records after the references change
 python -m cvrp.validator instances/                         # D3 gate: every §2 assumption + certificate + reference
 python scripts/variable_count.py --write-md                 # D2: §4 table into docs/MODEL_WRITEUP.md (never typed)
 python -m cvrp.run --instance instances/S_seed00.json --formulation onehot-ub --embedder polygons --backend qutip --shots 500 --seed 0 --out out/

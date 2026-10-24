@@ -940,13 +940,27 @@ relabeling. CVRP gap: the best clustering routed by exact TSP, cross-checked aga
 with stated parameters. Every reference is labelled *proven* or *best known* (brief §9.3). → §0, §3.1,
 `docs/MODEL_WRITEUP.md`.
 
-**Q-ref. How do you know your reference values are optimal, with no CPLEX?** For every tier we enumerate
-*all* capacity-feasible clusterings with a set-partition dynamic programme over customer subsets (3^N/2 ≈
-7 M (set, subset) pairs on L, 1.3 s) and route each cluster exactly with Held–Karp; that is brute force in
-the brief's sense, so `reference_status = proven_optimum`. Simulated annealing (10 restarts, stated
-parameters in each JSON) independently reaches the same value on all 11 instances, and on tier S a naive
-enumeration of all K^N assignments agrees too. CPLEX is not installable here (`docs/DID_NOT_WORK.md`).
-→ `cvrp/exact.py`, `cvrp/reference.py`.
+**Q-ref. How are the reference values C* obtained?** The way brief §9.3 prescribes, by the first applicable
+method with a stated max solve time (`scripts/reference_qubosolver.py`, settings recorded in every
+`instances/*.json` under `reference.solver_settings`): (2) qubo-solver's classical solver on our penalized
+`onehot-ub` QUBO — CPLEX when the `cplex` package is importable (it is not here, `docs/DID_NOT_WORK.md`),
+otherwise qubo-solver's simulated annealing with stated parameters (T₀ = max penalty weight, T_f = 10⁻³ T₀,
+geometric cooling fixed by (T₀, T_f, max_iter), 10 seeded restarts, **max solve time 60 s**); every returned
+bitstring is decoded and only feasible decodes count, routed exactly; and (3) our constrained simulated
+annealing on the CVRP itself (stated T₀/T_f/α/max_iter, 10 seeded restarts, the same 60 s budget). C* is the
+best value found by either method and is recorded as `reference_status = best_known`, with the method that
+found it. On tier S the brief additionally asks for brute force *and* the solver with an agreement check, so
+there the exhaustive set-partition DP (`cvrp/exact.py`, Held–Karp per cluster) is also run and `agree` is
+recorded; on M/L no exhaustive search enters the reference. Measured (job 200, 17:50 ET, every number in the
+instance JSONs): the two solvers agree on all 11 instances' best-known C* and the tier-S brute-force check
+agrees 5/5. qubo-solver's SA on the *penalized QUBO* reaches C* on 5/5 S and 2/3 M instances but on tier L
+its best feasible decode within 60 s is 23–34 % above the constrained SA (599.9 vs 447.0, 554.6 vs 434.9,
+521.7 vs 424.7) — the penalty landscape of a 60-variable one-hot QUBO is a harder search space than the
+constrained problem itself, which is why C* is defined as the best of the two and never the QUBO solver
+alone. (The exact DP run earlier today — commit 6a8d0dd — returned the same 11 values; we report them as
+best known because that is the §9.3 route the team chose.) Re-scoring every run record against the new
+blocks (`scripts/rescore_records.py`) changed only the `reference_status` column of results.csv.
+→ `scripts/reference_qubosolver.py`, `cvrp/reference.py`, `cvrp/exact.py`.
 
 **Q-fleet. Your L optima use 3 of 4 vehicles — is that allowed?** Yes: brief §2 assumption 6 says a vehicle
 may be left unused at zero cost, and by the triangle inequality merging two tours never costs more when

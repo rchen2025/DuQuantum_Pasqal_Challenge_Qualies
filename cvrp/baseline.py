@@ -391,19 +391,27 @@ def _device(kind: str):
     raise ValueError(f"--device must be one of {DEVICES}, got {kind!r}")
 
 
-def _backend(shots: int, name: str):
+def _backend(shots: int, name: str, bond_dim: Optional[int] = None):
+    """qubo-solver's LocalEmulator wrapper around the chosen Pulser emulator backend.  ``bond_dim`` caps
+    emu-mps's maximum bond dimension (``MPSConfig(max_bond_dim=...)``); emu-mps's own default lets χ grow
+    until memory runs out (χ > 300 on 30 atoms, > 50 s per time step — DID_NOT_WORK.md)."""
     from qubosolver import LocalEmulator
     if name == "auto":
         return LocalEmulator(num_shots=int(shots))
+    cfg = None
     if name == "qutip":
         from pulser_simulation import QutipBackendV2 as BT
     elif name == "emu-sv":
         from emu_sv import SVBackend as BT
     elif name == "emu-mps":
         from emu_mps import MPSBackend as BT
+        if bond_dim is not None:
+            from emu_mps import MPSConfig
+            from pulser.backend import BitStrings
+            cfg = MPSConfig(max_bond_dim=int(bond_dim), observables=(BitStrings(num_shots=int(shots)),))
     else:
         raise ValueError(f"--backend must be auto|qutip|emu-sv|emu-mps, got {name!r}")
-    return LocalEmulator(backend_type=BT, num_shots=int(shots))
+    return LocalEmulator(backend_type=BT, num_shots=int(shots), emulation_config=cfg)
 
 
 def _quantum_config(backend, device, embedder: str, drive: str, kappa: Optional[float],
@@ -552,7 +560,7 @@ def run_quantum(inst: Instance, formulation: str, shots: int, seed: int,
                 weights: Optional[Dict[str, float]] = None, backend: str = "auto", device: str = "analog",
                 embedder: str = "blade", drive: str = "local_energy_scale", kappa: Optional[float] = None,
                 pipeline: str = "raw", repair: str = "none", bayes_calls: int = 20,
-                allow_negative_couplings: bool = False, dry_run: bool = False,
+                allow_negative_couplings: bool = False, dry_run: bool = False, bond_dim: Optional[int] = None,
                 mopt: Optional[ModelOptimum] = None, verbose: bool = True) -> Dict[str, Any]:
     """qubo-solver's quantum pipeline on our QUBO, raw counts scored by cvrp.metrics."""
     t0 = time.perf_counter()
@@ -582,7 +590,7 @@ def run_quantum(inst: Instance, formulation: str, shots: int, seed: int,
     _check_not_trivial(qs_inst)
 
     dev, dmm = _device(device)
-    be = _backend(shots, backend)
+    be = _backend(shots, backend, bond_dim)
     use_default = pipeline == "default"
     cfg = _quantum_config(be, dev, embedder, drive, kappa, preprocessing=use_default,
                           postprocessing=use_default, bayes_calls=bayes_calls)
@@ -596,6 +604,7 @@ def run_quantum(inst: Instance, formulation: str, shots: int, seed: int,
                        "qubosolver-quantum", seed, shots, repair, dmm)
     rec["backend_params"] = {
         "backend": "qubosolver-quantum", "shots": int(shots), "requested_emulator": backend,
+        "bond_dim": (int(bond_dim) if (bond_dim is not None and backend == "emu-mps") else None),
         "pipeline": pipeline, "preprocessing": use_default, "postprocessing": use_default,
         "qubosolver_config": _dataclass_to_jsonable(cfg), "device_name": dev.name,
         "compiler_profile": "MAX_ENERGY", "default_sequence_duration_ns": QS_DEFAULT_SEQUENCE_DURATION_NS,
@@ -876,6 +885,7 @@ def main(argv=None):
                     "sequence in quantum mode), print, write record without counts")
     # quantum knobs
     ap.add_argument("--backend", default="auto", help="auto | qutip | emu-sv | emu-mps (qubo-solver picks by size when auto)")
+    ap.add_argument("--bond-dim", type=int, default=None, help="emu-mps max bond dimension cap (results.csv bond_dim column)")
     ap.add_argument("--device", default="analog", choices=DEVICES, help="analog = Pulser AnalogDevice (brief); dmm = "
                     "qubo-solver's AnalogDeviceWithDMM (labelled dmm=true)")
     ap.add_argument("--embedder", default="blade", choices=EMBEDDERS)
@@ -906,7 +916,7 @@ def main(argv=None):
         rec = run_quantum(inst, a.formulation, a.shots, a.seed, weights=weights, backend=a.backend, device=a.device,
                           embedder=a.embedder, drive=a.drive, kappa=a.kappa, pipeline=a.pipeline, repair=a.repair,
                           bayes_calls=a.bayes_calls, allow_negative_couplings=a.allow_negative_couplings,
-                          dry_run=a.dry_run, mopt=mopt)
+                          dry_run=a.dry_run, mopt=mopt, bond_dim=a.bond_dim)
         if a.dry_run:
             print(json.dumps({k: rec[k] for k in ("method", "device", "atoms", "sequence_duration_ns", "pulse", "backend_params")},
                              indent=1, default=str))

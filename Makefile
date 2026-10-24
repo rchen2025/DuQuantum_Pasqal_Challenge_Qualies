@@ -17,7 +17,7 @@ instances:
 	$(PY) -m cvrp.instances --out instances/
 
 references:
-	$(PY) -m cvrp.reference instances/
+	$(PY) scripts/reference_qubosolver.py instances/ --time-limit 60 --restarts 10 --seed 0   # brief §9.3 (needs torch + qubo-solver)
 
 validate:
 	$(PY) -m cvrp.validator instances/
