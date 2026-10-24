@@ -122,7 +122,7 @@ mean" — the dropped part is exactly zero where the model lives. Hence a single
 
 realises it, with `α` the device scale of §7. Ratio the embedding must hit: `h / J_clique = −A / 2A = −1/2`
 and `h / J_objective = −A / (d_ij + 2λ₂ d_i d_j)`, i.e. `|h|` is 2–8× the largest objective coupling on S
-and 7–100× on L (numbers in §7).
+and 9–100× on L (numbers in §7).
 
 ## 6. Weights
 
@@ -146,8 +146,10 @@ customers, and every other customer is on at most one vehicle. (3) For a missing
 Checked by enumeration on the 5 shipped S instances, 40 toy S seeds and random non-negative `W` at
 `K = 2, 3, 4` (`test_tight_A_rule_every_argmin_is_one_hot`). It is a 1 % target-model margin, so the
 original rule stays as the large-margin ablation; on the device the smaller `A` makes every objective
-coupling `K×` stronger relative to the clique coupling. The checker confirms the bound is tight-ish: the
-tight `A` fails after one halving, the original after two.
+coupling `K×` stronger relative to the clique coupling. Both rules are sufficient, not necessary: on S_seed04 the
+tight `A` (88.6) fails after one halving while the original (176.5) fails after two, but on S_seed00 even
+the tight `A` (200.7) survives one halving (`docs/checks/check_*_tight.txt`) — the true threshold is
+instance-dependent and can lie well below `R_w/K`.
 
 **`λ₂` (capacity → balance) — empirical parameterisation, chosen by scan.** We write `λ₂` in units of
 `R / (2Q)`, `R = max_i Σ_{j≠i} d_ij`, purely to make `κ` dimensionless and comparable across tiers; it is
@@ -176,8 +178,9 @@ the two constraints "closest" and "balanced" conflict on the binding seeds, and 
 that — only post-selection on feasibility can (Pitfall 9.1). On the 5 shipped S instances capacity never
 binds, so `ok_at_zero=True` below is expected and honest.
 
-**Brute-force checker output, verbatim** (`python -m cvrp.model --formulation onehot-ub --instance …`;
-full files in `out/gate1/check_*.txt`):
+**Brute-force checker output, condensed** (`python -m cvrp.model --formulation onehot-ub --instance …`;
+the full, unedited outputs are tracked in `docs/checks/check_*.txt`, including `onehot-ub-tight` on
+S_seed00/04 — `check_*_tight.txt`):
 
     S_seed00  weights={'lam2': 2.9366, 'A': 398.4189}
       decodable fraction 0.0625  feasible fraction 0.0391
@@ -230,7 +233,7 @@ minimum separation; `python - <<…` snippet in `out/gate1/scales.txt`):
 `δ_f = 27.7 rad/µs` is far inside the ±125.66 range. These rows assume the clique coupling `2A` is the
 largest entry; with the tight `A` that is no longer automatic (`J_max = max(2A, max w_ij)`), and the
 structure-aware embedder (DERIVATIONS §5.7) fits `α` and `δ_f` on the one-hot subspace instead of this
-pairwise bound. Geometry: a `K = 3` clique is an equilateral triangle at 5 µm; a `K = 4` clique cannot have
+pairwise bound (`docs/checks/scales.txt`). Geometry: a `K = 3` clique is an equilateral triangle at 5 µm; a `K = 4` clique cannot have
 six equal 5 µm distances in a plane (a square gives two diagonals at 7.07 µm, coupling ratio `1/8`), so even
 the clique alone is realised only approximately on L.
 
@@ -282,8 +285,9 @@ single objective coupling, on L 9–100×; the tight rule divides that by `K`. O
 `2A` is pinned at 55.4 rad/µs (5 µm), so the objective couplings land at 0.3–13 rad/µs, i.e. 6–12 µm
 distances, comfortably resolvable; `δ_f = 27.7 rad/µs` is uniform and in range. The cost is not the ratio
 but the geometry: rook's-graph cross-vehicle pairs cannot be made weak while same-vehicle pairs are strong
-(§7). The checker shows the original `A` can be halved once without harm (fails at ×1/4) and the tight `A`
-cannot (fails at ×1/2) — the two rules bracket the true threshold.
+(§7). The checker shows the original `A` can be halved once without harm on every S instance checked; the
+tight `A` can on S_seed00 but not on S_seed04 — the proved bound is sufficient, the true per-instance
+threshold is lower, and we do not go below the proof.
 
 **Also ask yourself before judging:** why `κ` and not a per-instance `λ₂`? (Because the reference values
 are computed per instance and a per-instance weight would be fitted to the answer; a tier-level constant

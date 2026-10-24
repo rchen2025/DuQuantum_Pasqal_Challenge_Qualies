@@ -1,0 +1,3 @@
+S_seed00: n=8 A=398.4 lam2=2.937 h=-398.4 Jclique=796.8 Jsame-vehicle [51.1,188.8]; alpha=55.4/Jmax=0.0695 -> delta_f=27.7 rad/us, same-vehicle J in [3.55,13.13] rad/us -> r in [6.4,7.9] um; nonzero pairs 16/28
+M_seed00: n=30 A=2973.1 lam2=2.829 h=-2973.1 Jclique=5946.3 Jsame-vehicle [117.6,439.6]; alpha=55.4/Jmax=0.0093 -> delta_f=27.7 rad/us, same-vehicle J in [1.10,4.10] rad/us -> r in [7.7,9.6] um; nonzero pairs 165/435
+L_seed00: n=60 A=4315.4 lam2=2.872 h=-4315.4 Jclique=8630.8 Jsame-vehicle [43.8,481.5]; alpha=55.4/Jmax=0.0064 -> delta_f=27.7 rad/us, same-vehicle J in [0.28,3.09] rad/us -> r in [8.1,12.1] um; nonzero pairs 510/1770

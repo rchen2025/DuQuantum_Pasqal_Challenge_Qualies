@@ -1,0 +1,22 @@
+instance toy-S-14: N=4 K=2 Q=7 demands=[4, 2, 4, 3] locations=[(83.1, 36.09), (70.27, 86.01), (64.13, 54.84), (76.23, 71.63)]
+linear terms h: min=-203.6455 max=-203.6455; couplings J: min(nonzero)=30.2737 max=407.2910; all couplings >= 0: True
+brute-force check: formulation='onehot-ub' instance='toy-S-14' n_vars=8 (2^n = 256) weights={'lam2': 1.2256785215628394, 'A': 203.64551556505614}
+  decodable fraction      : 0.0625
+  feasible fraction       : 0.0156
+  model optimum           : 67.9690  assignment=(0, 1, 1, 0)  (1 optimal clustering(s))
+  min energy              : 96.1597  over 2 argmin bitstring(s)
+  argmin assignment       : (1, 0, 1, 0)  objective=42.22982249208136
+  argmin decodes feasible : False
+  argmin same clustering  : False
+  argmin is model optimum : False
+  min feasible energy     : 116.9962
+  min infeasible energy   : 96.1597
+  energy gap (inf - feas) : -20.8365   BROKEN (<=0)
+  landscape over 4 feasible assignment(s): pearson=1.0000 spearman=1.0000
+    rank  energy      objective   gap%     assignment
+       1    116.9962     67.9690    0.00   (0, 1, 1, 0)
+       3    121.2651     72.2379    6.28   (1, 1, 0, 0)
+  penalty margins (sound = argmin feasible AND optimal):
+    lam2=1.22568: ok_at_half=False ok_at_double=False ok_at_zero=False; fails after 1 halving(s) (x 1/2)
+    A=203.646: ok_at_half=False ok_at_double=False ok_at_zero=False; fails after 1 halving(s) (x 1/2)
+  => NOT SOUND

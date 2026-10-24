@@ -1,0 +1,25 @@
+instance S_seed00: N=4 K=2 Q=7 demands=[2, 3, 4, 1] locations=[(63.7, 26.98), (4.1, 1.65), (81.33, 91.28), (60.66, 72.95)]
+linear terms h: min=-200.6965 max=-200.6965; couplings J: min(nonzero)=51.1195 max=401.3930; all couplings >= 0: True
+brute-force check: formulation='onehot-ub-tight' instance='S_seed00' n_vars=8 (2^n = 256) weights={'lam2': 2.9365925381795095, 'A': 200.6965227009816}
+  decodable fraction      : 0.0625
+  feasible fraction       : 0.0391
+  model optimum           : 92.3861  assignment=(0, 0, 1, 1)  (1 optimal clustering(s))
+  min energy              : 151.1179  over 2 argmin bitstring(s)
+  argmin assignment       : (1, 1, 0, 0)  objective=92.38607392760292
+  argmin decodes feasible : True
+  argmin same clustering  : True
+  argmin is model optimum : True
+  min feasible energy     : 151.1179
+  min infeasible energy   : 251.8160
+  energy gap (inf - feas) : 100.6981   OK (>0)
+  landscape over 10 feasible assignment(s): pearson=0.9693 spearman=0.9000
+    rank  energy      objective   gap%     assignment
+       1    151.1179     92.3861    0.00   (1, 1, 0, 0)
+       3    222.2876    157.6826   70.68   (1, 0, 1, 0)
+       5    222.5949    140.3703   51.94   (0, 1, 0, 0)
+       7    246.6082    164.3836   77.93   (0, 1, 1, 0)
+       9    266.4442    201.8392  118.47   (0, 0, 1, 0)
+  penalty margins (sound = argmin feasible AND optimal):
+    lam2=2.93659: ok_at_half=True ok_at_double=True ok_at_zero=True (not binding here); never fails within 10 halvings
+    A=200.697: ok_at_half=True ok_at_double=True ok_at_zero=False; fails after 2 halving(s) (x 1/4)
+  => SOUND
