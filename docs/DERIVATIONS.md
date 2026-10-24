@@ -1006,7 +1006,9 @@ annealing on the CVRP itself (stated T₀/T_f/α/max_iter, 10 seeded restarts, t
 best value found by either method and is recorded as `reference_status = best_known`, with the method that
 found it. On tier S the brief additionally asks for brute force *and* the solver with an agreement check, so
 there the exhaustive set-partition DP (`cvrp/exact.py`, Held–Karp per cluster) is also run and `agree` is
-recorded; on M/L no exhaustive search enters the reference. Measured (job 200, 17:50 ET, every number in the
+recorded — and because an exhaustive search that agrees *is* the brief's level 1, the five S references carry
+`proven_optimum` (team review of report_1850: an exact certificate is not downgraded because CPLEX is missing);
+on M/L no exhaustive search enters the reference and they stay `best_known`. Measured (job 200, 17:50 ET, every number in the
 instance JSONs): the two solvers agree on all 11 instances' best-known C* and the tier-S brute-force check
 agrees 5/5. qubo-solver's SA on the *penalized QUBO* reaches C* on 5/5 S and 2/3 M instances but on tier L
 its best feasible decode within 60 s is 23–34 % above the constrained SA (599.9 vs 447.0, 554.6 vs 434.9,
@@ -1082,6 +1084,25 @@ ground state (defect gap +19.4). What *is* unrealisable at K = 3 is the ordering
 distance couplings (optimum at rank ~10 000), so the honest tier-M statement is: the constraints embed, the
 objective does not. qubo-solver's own pipeline on the same instance (BLaDE register, χ = 32) shows the same
 split — 99 % one-hot shots, 1.6 % capacity-feasible, best feasible 72 % above the model optimum. → §6.7, results.csv.
+
+**Q-M3. On tier M, how much of the loss is the soft capacity penalty, how much the register, how much the pulse?**
+We enumerated all K^N one-hot assignments and compared three landscapes (`scripts/landscapes.py` →
+`docs/checks/landscapes.md`): the original model f (closeness on capacity-feasible assignments), the target
+QUBO E_Q (with the load-balance term), and the realised register E_dev at Ω = 0. (i) *Penalty:* on all 5 S
+instances and on M_seed00/01 the QUBO argmin over one-hot strings is exactly the model optimum (rank 1,
+capacity-feasible) — the load-balance term costs nothing there. On **M_seed02 it does not**: the QUBO argmin is a
+feasible assignment 10.2 % above the model optimum, which sits at QUBO rank 331 — and qubo-solver's tabu row on
+M_seed02 lands at precisely that 10.2 %, i.e. tabu solved the QUBO exactly. So on M_seed02, 10 of the 23 points of
+measured model gap are the formulation's λ₂ = 0.15·R/(2Q) rule, not the device. (ii) *Register:* the model optimum
+sits at device rank 10 474 / 12 966 / 4 192 of 59 049 on M_seed00/01/02 — this is where most of the loss is. On
+M_seed01 the device's own one-hot ground state is capacity-feasible with a 101 % model gap but only a 2.6 % CVRP
+gap after exact routing (the device likes a clustering that routes well but is far from "close"). (iii) *Pulse:*
+the emulated best feasible shots (model gaps 67.9 / 37.9 / 23.0 %) are *better* than the register's best feasible
+one-hot string under E_dev (82.0 / 101.3 / 93.9 %), so the sweep is not the bottleneck; it samples the low-energy
+part of a landscape whose ordering is wrong. The equivalence "P(model gap ≤ 5 %) = P(model optimum)" used in the
+report holds on every S instance and on M_seed00/01 (smallest non-zero feasible gap 11–62 %) but **not** on
+M_seed02 (6 feasible assignments within 5 %, smallest 0.98 %) — the report now states it per instance. All of
+this certifies the one-hot subspace only, never all 2^(NK) bitstrings. → `docs/checks/landscapes.md`.
 
 **Q-emb1. Your full-matrix fidelity went from ≈0.95 to ≈0.2–0.3 — did you fix the embedding or the metric?** Neither; we changed
 what we ask the register to reproduce. The full-matrix error is the brief's formula and we still report it,

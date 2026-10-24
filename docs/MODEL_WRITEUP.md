@@ -39,8 +39,8 @@ Tiers (brief Table 1): S: N=4, K=2, Q=7; M: N=10, K=3, Q=20; L: N=15, K=4, Q=30.
 * CVRP gap reference C*: brief §9.3 — qubo-solver's classical solver on the penalized QUBO (CPLEX if
   importable, else its simulated annealing with stated parameters) under a **60 s max solve time**, plus a
   constrained simulated annealing with the same budget; C* = best known of the two
-  (`scripts/reference_qubosolver.py`, `reference_status = best_known`, every setting in the instance JSON).
-  On tier S the exhaustive set-partition DP (`cvrp.exact`) is also run and must agree. The model optimum routed exactly is a
+  (`scripts/reference_qubosolver.py`, every setting in the instance JSON). On tier S the exhaustive set-partition
+  DP (`cvrp.exact`) is also run and must agree, which makes the S references `proven_optimum`; M/L are `best_known`. The model optimum routed exactly is a
   different number (the decomposition cost); its gap to C* is the decomposition gap (21.7 % on S_seed04).
 
 ## What we report

@@ -16,7 +16,8 @@ For every instance, C* is the **best known** CVRP cost found by, each under the 
 
 C* = min of the two, recorded with `reference_status = "best_known"` and every solver setting the brief
 asks for.  On tier S the brief also demands brute force *and* the solver and a check that they agree,
-so the exact set-partition DP is run there and `agree` is recorded; on M/L no exhaustive search is run.
+so the exact set-partition DP is run there and `agree` is recorded; when it agrees the S reference is a
+`proven_optimum` (brief level 1 applies); on M/L no exhaustive search is run.
 Needs the Windows venv (torch + qubo-solver).  Writes the `reference` block into the instance JSON.
 """
 from __future__ import annotations
@@ -176,6 +177,12 @@ def build_reference(inst: Instance, time_limit: float, restarts: int, seed: int,
         }
         ref["agree"] = bool(abs(ex["cost"] - C) <= COST_TOL)
         ref["brute_force_naive_cost"] = ex["cost"]
+        if ref["agree"]:
+            # brief §9.3 level 1 applies: the exhaustive search certifies the value the solvers found
+            ref["reference_status"] = "proven_optimum"
+            ref["n_distinct_optima"] = int(ex["n_optimal"])
+            ref["n_distinct_optima_note"] = "exhaustive set-partition DP (vehicle relabellings identified)"
+            ref["method"] += "; tier S: exhaustive brute force agrees -> proven optimum"
     return ref
 
 
