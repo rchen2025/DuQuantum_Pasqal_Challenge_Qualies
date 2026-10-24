@@ -37,7 +37,7 @@ def fmt(v):
     return "" if v is None else (f"{v:.3f}" if isinstance(v, float) else str(v))
 
 
-def run_points(points, insts, formulation, backend, shots, seed, embedder, out, label_fn, quiet=True):
+def run_points(points, insts, formulation, backend, shots, seed, embedder, out, label_fn, quiet=True, cache_dir="embeddings"):
     out = Path(out); out.mkdir(parents=True, exist_ok=True)
     rows = []
     for pt in points:
@@ -45,9 +45,10 @@ def run_points(points, insts, formulation, backend, shots, seed, embedder, out, 
         t0 = time.time()
         for inst in insts:
             kw = pt["kw"](inst)
-            rec = run_one(inst, formulation, backend, shots, seed, embed_kw={"embedder": embedder, "cache_dir": str(out / "cache")},
+            rec = run_one(inst, formulation, backend, shots, seed, embed_kw={"embedder": embedder, "cache_dir": cache_dir},
                           verbose=not quiet, **kw)
             rec["scan_point"] = pt["label"]
+            rec["method"] = rec["method"] + "|" + pt["label"].replace(" ", "").replace(",", "_")   # unique record per point
             save_record(rec, out)
             m = rec["metrics_raw"]
             per.append(m)
@@ -126,7 +127,8 @@ def main(argv=None):
             return {"pulse_overrides": dict(base)}
         points.insert(0, {"label": "no slow region (baseline)", "kw": kw0})
 
-    run_points(points, insts, a.formulation, a.backend, a.shots, a.seed, a.embedder, a.out, None)
+    run_points(points, insts, a.formulation, a.backend, a.shots, a.seed, a.embedder, a.out, None,
+               cache_dir=(str(Path(a.out) / "cache") if a.what == "weights" else "embeddings"))
 
 
 if __name__ == "__main__":

@@ -135,7 +135,7 @@ def _mds(Dt: np.ndarray, rng: np.random.Generator) -> np.ndarray:
 
 
 def embed_onehot(J: np.ndarray, h: np.ndarray, N: int, K: int, device: Any = None, seed: int = 0,
-                 n_starts: int = 6, side_margin: float = 1e-3, maxiter: int = 3000) -> Embedding:
+                 n_starts: int = 6, side_margin: float = 1e-3, maxiter: int = 3000, _debug: Optional[dict] = None) -> Embedding:
     """One-hot QUBO (variable i*K+k) -> register exact on the one-hot subspace.  See module doc."""
     from scipy.optimize import minimize
 
@@ -207,10 +207,12 @@ def embed_onehot(J: np.ndarray, h: np.ndarray, N: int, K: int, device: Any = Non
     # sample of 4000 of them.  This is exactly "the register orders the clusterings like the model does",
     # which is what the measurement needs; per-pair effective couplings are reported as a diagnostic.
     n_strings = K ** N
-    if n_strings <= 65536:
+    if n_strings <= 4096:
         idx = np.arange(n_strings)
     else:
-        idx = rng.integers(0, n_strings, size=4000)
+        # the fit objective is evaluated thousands of times with numerical gradients: keep it to a seeded
+        # sample of one-hot strings (the reported residual is recomputed on the same sample)
+        idx = rng.integers(0, n_strings, size=2048)
     A_mat = np.zeros((len(idx), N), dtype=int)
     v = idx.copy()
     for i in range(N):
@@ -233,7 +235,7 @@ def embed_onehot(J: np.ndarray, h: np.ndarray, N: int, K: int, device: Any = Non
     # subspace (observed: cross couplings from crowded dimers made a "customer with no atom" cheaper).
     # delta_final is a free fit parameter here (it is a constant on the one-hot subspace, so it only
     # controls these defect gaps); it starts at alpha*A, the value the QUBO algebra suggests.
-    n_def_parents = min(len(idx), 256)        # all one-hot strings on S (16); the first 256 of the sample on M/L
+    n_def_parents = min(len(idx), 64 if n > 20 else 256)   # all one-hot strings on S (16); the first 64 of the sample on M/L
     par = Xoh[:n_def_parents]
     Xdef = np.repeat(par, n, axis=0)
     flip = np.tile(np.arange(n), n_def_parents)
@@ -276,11 +278,74 @@ def embed_onehot(J: np.ndarray, h: np.ndarray, N: int, K: int, device: Any = Non
             f += mu * float((np.maximum(0.0, rad - (r_max - 0.05)) ** 2).sum())
         return f
 
+    # ---- analytic gradient version (same terms minus the weak pair regulariser), used for n > 20 where
+    # numerical gradients over 3N+1 parameters are too slow.  Chain rule: f depends on the atom positions only
+    # through U_ij = C6 d_ij^-6, and dU_ij/dp_i = -6 U_ij (p_i - p_j)/d_ij^2 ; positions depend on (c_a, theta_a)
+    # through p_i = c_a + R(theta_a) v_k, so dp_i/dc_a = I and dp_i/dtheta_a = R'(theta_a) v_k.
+    scale_f = float(wts.max()) * float(Tpos.max()) ** 2
+    owner_idx = np.repeat(np.arange(N), K)
+    kk = np.tile(np.arange(K), N)
+    V = _polygon(K, side)
+
+    def objective_grad(z):
+        c, th, delta = unpack(z)
+        pts = atom_coords(c, th, K, side)
+        diff = pts[:, None, :] - pts[None, :, :]
+        d2 = (diff ** 2).sum(-1); np.fill_diagonal(d2, 1.0)
+        U = C6 / d2 ** 3; np.fill_diagonal(U, 0.0)
+        G = np.zeros((n, n))          # dF/dU_ij (symmetric, each unordered pair's weight appears in both entries)
+        f = 0.0
+        g_delta = 0.0
+        # (1) energy fit
+        Ed = 0.5 * np.einsum("bi,ij,bj->b", Xoh, U, Xoh)
+        r = (Ed - Ed.mean()) - Em
+        f += scale_f * float((r ** 2).sum()) / Em_var
+        G += scale_f * (Xoh.T @ (r[:, None] * Xoh)) / Em_var        # d/dU_ij of sum r^2 = 2 r X_i X_j, and 1/2 from E
+        # (2) defect gaps
+        Ed_par = -delta * par.sum(1) + 0.5 * np.einsum("bi,ij,bj->b", par, U, par)
+        Ed_def = -delta * Xdef.sum(1) + 0.5 * np.einsum("bi,ij,bj->b", Xdef, U, Xdef)
+        gapv = Ed_def - np.repeat(Ed_par, n)
+        short = np.maximum(0.0, 0.5 * model_gap - gapv)
+        f += scale_f * float((short ** 2).sum()) / dscale
+        wgt = -2.0 * short * scale_f / dscale                           # d/dgap of short^2
+        # dgap/dU_ij = (X_def X_def - X_par X_par)_ij / 2 * 2 -> X X products; dgap/ddelta = -(sum X_def - sum X_par)
+        G += 0.5 * (Xdef.T @ (wgt[:, None] * Xdef) - par.T @ ((np.add.reduceat(wgt, np.arange(0, len(wgt), n)))[:, None] * par))
+        g_delta += float((wgt * (-(Xdef.sum(1) - np.repeat(par.sum(1), n)))).sum())
+        # (3) min-distance hinge (different polygons) and radius hinge: direct position gradients
+        d = np.sqrt(d2)
+        other = owner_idx[:, None] != owner_idx[None, :]
+        viol = np.where(other, np.maximum(0.0, d_min * (1 + 2e-3) - d), 0.0)
+        f += 0.5 * mu * float((viol ** 2).sum())
+        gp = ((-mu * viol / d)[:, :, None] * diff).sum(1) * 2.0 * 0.5 * 2.0   # each pair twice in the matrix -> factor handled
+        if r_max is not None:
+            rad = np.sqrt((pts ** 2).sum(1))
+            vr = np.maximum(0.0, rad - (r_max - 0.05))
+            f += mu * float((vr ** 2).sum())
+            gp += (2.0 * mu * vr / np.where(rad > 0, rad, 1.0))[:, None] * pts
+        # chain rule through U: dF/dp_i = sum_j (G_ij + G_ji) * dU_ij/dp_i
+        Gs = G + G.T
+        coef = Gs * (-6.0 * U / d2)                                       # (n, n)
+        gp += (coef[:, :, None] * diff).sum(1)
+        # positions -> centres / orientations
+        gc = np.zeros((N, 2)); gth = np.zeros(N)
+        np.add.at(gc, owner_idx, gp)
+        Rp = _rot(th + np.pi / 2)                                         # R'(theta) v = R(theta + 90deg) v
+        dpdth = np.einsum("nab,nb->na", Rp[owner_idx], V[kk])             # (n, 2)
+        np.add.at(gth, owner_idx, (gp * dpdth).sum(1))
+        grad = np.concatenate([gc.ravel(), gth, [g_delta if d_lo < delta < d_hi else 0.0]])
+        return f, grad
+
+    if _debug is not None:        # test hook: expose the closures for gradient checks
+        _debug.update(objective=objective, objective_grad=objective_grad, unpack=unpack, alpha=alpha, h_eff=h_eff)
+        return None  # type: ignore[return-value]
+
     # starting centre distances from the isolated-pair solution
     Dt = np.zeros((N, N))
     for i, j in zip(*iu):
         Dt[i, j] = Dt[j, i] = _target_centre_distance(w[i, j], alpha, K, side, C6) if w[i, j] > 0 else 3 * d_min * N ** 0.5
     best = None
+    if n > 20:
+        n_starts = max(n_starts, 8)      # analytic gradients: starts are cheap
     for s in range(n_starts):
         if s % 2 == 0:
             c0 = _mds(Dt, rng)
@@ -288,10 +353,32 @@ def embed_onehot(J: np.ndarray, h: np.ndarray, N: int, K: int, device: Any = Non
             c0 = rng.uniform(-Dt.mean(), Dt.mean(), (N, 2))
         th0 = np.zeros(N) if s < 2 else rng.uniform(0, 2 * math.pi / K, N)
         z0 = np.concatenate([(c0 - c0.mean(0)).ravel(), th0, [-alpha * h_eff]])
-        res = minimize(objective, z0, method="L-BFGS-B", options={"maxiter": maxiter})
+        if n > 20:
+            res = minimize(objective_grad, z0, jac=True, method="L-BFGS-B", options={"maxiter": maxiter})
+        else:
+            res = minimize(objective, z0, method="L-BFGS-B", options={"maxiter": maxiter})
         if best is None or res.fun < best.fun:
             best = res
     c, th, delta_fit = unpack(best.x)
+    # Hard guarantee of the device's minimum separation between atoms of different polygons: push the two
+    # polygons of the closest violating pair apart along the line joining their centres (tiny moves; the
+    # soft hinge normally leaves nothing to do).  Pulser rejects any pair below 5 µm, so this is not optional.
+    owner = np.repeat(np.arange(N), K)
+    for _ in range(500):
+        pts = atom_coords(c, th, K, side)
+        _, d = _pairwise(pts)
+        d = np.where(owner[:, None] != owner[None, :], d, np.inf)
+        i, j = np.unravel_index(int(np.argmin(d)), d.shape)
+        if d[i, j] >= d_min * (1 + 2e-3):
+            break
+        a, b = owner[i], owner[j]
+        v = c[a] - c[b]
+        nv = np.linalg.norm(v)
+        v = v / nv if nv > 1e-9 else np.array([1.0, 0.0])
+        push = 0.5 * (d_min * (1 + 3e-3) - d[i, j])
+        c[a] += push * v
+        c[b] -= push * v
+        notes_push = True
     pts = atom_coords(c, th, K, side)
     pts = pts - pts.mean(0)
 

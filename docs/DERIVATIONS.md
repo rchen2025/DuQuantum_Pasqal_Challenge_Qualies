@@ -659,12 +659,12 @@ clustering differ in device energy, which the scoring ignores because clustering
 **The construction.** Each customer becomes a rigid regular K-gon of side s = 5 µm (K=2: a dimer), so the
 clique coupling is exactly 2A·α with α = C6/s⁶/(2A) — the clique is pinned at the minimum separation.
 The polygon centres c_i and orientations θ_i are optimised (L-BFGS, 6 seeded starts) so that the device
-energies of all K^N one-hot strings (a seeded sample of 4000 beyond 65 536) fit α·E_QUBO up to a constant:
+energies of all K^N one-hot strings (all K^N strings up to 4096, else a seeded sample of 2048) fit α·E_QUBO up to a constant:
 we minimise the normalised residual Σ(E_dev − αE_QUBO − c)² / Σ(αE_QUBO − mean)² with the slope fixed at α
 (0 = the register orders the clusterings exactly like the model; it is not an R², the slope is not free).
 Two more terms: (i) **defect gaps** — every one-hot string with one bit flipped (a customer with no atom or
 with two) must lie at least ½ of the model's own penalty gap above its parent, in device units (all 16
-one-hot strings on S; the first 256 of the sample on M/L); without this the crowded cross couplings made
+one-hot strings on S; the first 64 of the sample on M/L); without this the crowded cross couplings made
 "customer with no atom" the ground state on two of three seeds; (ii) hinges keeping atoms of different
 polygons ≥ 5 µm apart and the register inside 38 µm. **δ_f is a free fit parameter** here: by (5.7a) it is a
 constant on the one-hot subspace, so it only sets the defect gaps; it starts at the QUBO value αA
