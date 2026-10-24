@@ -45,8 +45,9 @@ One atom per customer (x_i = which side of a bisection), objective couplings 2w_
 of (b) and removes the clique problem entirely, but cannot run on the QPU as the brief describes it. Cost ≈ 1 h
 on top of (b). Mention in the report as the road not taken unless you want the DMM rows.
 
-Recommendation: (a) tonight regardless (it is cheap and honest), plus (b) if you accept the model change —
-it is the only path to non-zero feasibility on M/L with this device.
+Recommendation (updated 16:40 after the probes below): (a) tonight — measured M/L rows with the diagnostics
+that explain them — and spend the rest of the night on polish and a second reviewer pass; (b) is ruled out
+by probe (f); (e) is the only idea with a physical chance on M/L and it is a new model.
 
 ## (e) Probe: seed selection on the raw customer map (one atom per customer) — negative
 Idea: place one atom per customer at the (scaled) customer position; the device then penalises exciting
