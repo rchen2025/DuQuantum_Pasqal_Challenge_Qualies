@@ -456,7 +456,7 @@ def plot_gap_histogram(recs: Sequence[Dict[str, Any]], path: str | Path, inst: O
         if "top" in sources:
             title += " (top-10 shots only)"
         ax.set_title(title)
-        ax.legend(frameon=False, loc="center left", bbox_to_anchor=(1.01, 0.5), fontsize=7, handlelength=1.5)
+        fig.legend(frameon=False, loc="outside center right", fontsize=7, handlelength=1.5)
         return _finish(fig, path)
 
 
@@ -514,7 +514,8 @@ def plot_summary(results_csv_path: str | Path, path: str | Path,
             ax.set_axisbelow(True)
         axes[-1].set_xticks(x); axes[-1].set_xticklabels(instances, rotation=0 if ni <= 6 else 45)
         axes[0].set_title("results.csv: raw shots, no repair (best seed per method)")
-        axes[0].legend(frameon=False, loc="upper left", bbox_to_anchor=(1.01, 1.0), fontsize=7, handlelength=1.5)
+        h, l = axes[0].get_legend_handles_labels()
+        fig.legend(h, l, frameon=False, loc="outside center right", fontsize=7, handlelength=1.5)
         return _finish(fig, path)
 
 

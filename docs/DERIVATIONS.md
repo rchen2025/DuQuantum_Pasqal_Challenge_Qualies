@@ -959,6 +959,16 @@ has 16 384 strings and ~0.6 % of uniform samples already decode to the optimal c
 Any quantum result on S must beat these numbers at equal shots or it says nothing; the brief asks for exactly
 this comparison (§9.2, "replace the quantum part with a random sampler"). → `cvrp/metrics.py`.
 
+**Q-M1. Your tier-S numbers are excellent; why is there nothing comparable for M and L?** Because the
+encoding stops being layable at K = 3. The exactly-one clique forces a customer's K atoms within 5 µm of each
+other, so a neighbouring customer's atoms are at nearly equal distance from all of them and the "zero"
+cross-vehicle couplings are as strong as the wanted ones and anisotropic. On S (K = 2, 4 dimers) a fit on the
+one-hot subspace absorbs this (§5.7); on M (K = 3, 10 triangles) it does not: subspace residual 38, model optimum
+at rank ~10 000 of 59 049 one-hot strings, defects below their parents (`DID_NOT_WORK.md`). We measured it
+rather than hid it (results.csv, tier M rows: feasibility and gaps as found). The brief's §4 warning — "an
+approach that halves the variable count but produces a coupling pattern you cannot lay out is not a saving" —
+applies to one-hot beyond K = 2 on this device. → §5.7, STATUS Gate-2 options.
+
 ### Embedding & pulse
 
 **Q-pulse1. Why 5800 ns and 0.75·Ω_max, and is that over-fitted to three seeds?** The scan (§6.6) shows
