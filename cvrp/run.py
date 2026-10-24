@@ -38,7 +38,7 @@ import numpy as np
 
 from .common import Instance, bits_to_str, clustering_of, str_to_bits
 from .embed import Embedding, embed
-from .metrics import Metrics, ModelOptimum, model_optimum, random_counts, score_counts
+from .metrics import Metrics, ModelOptimum, model_optimum, random_counts, random_onehot_counts, score_counts
 from .model import get_formulation
 from .pulse import PulseParams, build_sequence, default_for, validate
 
@@ -271,6 +271,10 @@ def run_one(inst: Instance, formulation: str, backend: str, shots: int, seed: in
     elif backend == "random":
         counts = random_counts(f.n_vars, shots, seed)
         rec["backend_params"] = {"backend": "random", "shots": shots, "seed": seed}
+    elif backend == "random-onehot":
+        counts = random_onehot_counts(f, shots, seed)
+        rec["backend_params"] = {"backend": "random-onehot", "shots": shots, "seed": seed,
+                                 "note": "uniform random assignments encoded one-hot (assignment-valid control)"}
     else:
         out = run_backend(seq, backend, shots, seed, bond_dim=bond_dim)
         counts, rec["backend_params"] = out["counts"], out["backend_params"]
@@ -324,7 +328,7 @@ def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--instance", required=True)
     ap.add_argument("--formulation", required=True)
-    ap.add_argument("--backend", default="random", help="qutip | emu-sv | emu-mps | numpy-sv | random")
+    ap.add_argument("--backend", default="random", help="qutip | emu-sv | emu-mps | numpy-sv | random | random-onehot")
     ap.add_argument("--shots", type=int, default=500)
     ap.add_argument("--seed", type=int, default=0, help="run seed (embedding starts, random sampler)")
     ap.add_argument("--weights", default="", help="penalty weights, e.g. A=12,B=3 (default: formulation's rule)")

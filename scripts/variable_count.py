@@ -35,7 +35,7 @@ MARK_OPEN, MARK_CLOSE = "<!-- VARIABLE_COUNT_TABLE -->", "<!-- /VARIABLE_COUNT_T
 def ordered_formulations() -> List[Type[Formulation]]:
     reg = registered_formulations()
     names = [n for n in FIRST_ROWS if n in reg] + sorted(n for n in reg if n not in FIRST_ROWS)
-    return [reg[n] for n in names]
+    return [reg[n] for n in names if getattr(reg[n], "table_row", True)]
 
 
 def row_for(cls: Type[Formulation]) -> Dict[str, object]:

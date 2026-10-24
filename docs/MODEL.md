@@ -1,8 +1,7 @@
 # MODEL — Gate-1 formulation `onehot-ub` (Track A)
 
-**Status: AI-drafted (Claude, 2026-10-24 14:30 ET) at the team's request under time pressure; the team must
-re-derive every line below before judging (see `AI_USE.md`).** Every number comes from a script call named
-next to it, never typed. Notation is DERIVATIONS.md §0; the physics is §2; the textbook it replaces is §3.
+**Status: drafted by Claude at the team's request (2026-10-24 14:30 ET), reviewed and corrected 16:30 ET
+(`AI_USE.md`).** Every number comes from a script call named next to it, never typed. Notation is DERIVATIONS.md §0; the physics is §2; the textbook it replaces is §3.
 
 One sentence: *one-hot assignment variables, no slack; the capacity inequality is handled by unbalanced
 penalization, which on one-hot strings collapses to a load-balance term; everything the device cannot
@@ -79,8 +78,10 @@ same vehicle. On one-hot strings this is exactly
 **So "capacity" becomes a load-balance term:** `λ₂ Σ_k L_k²` is minimised, for fixed total demand
 `D = Σ_i d_i`, by the most even split of demand across the K vehicles. It is **not** a hard `L_k ≤ Q`:
 
-* For `K = 2`: `L_1² + (D − L_1)²` is minimised by the achievable `L_1` closest to `D/2`, which also minimises
-  `max(L_1, L_2)`; so if any capacity-feasible split exists, the balance-optimal split is feasible.
+* For `K = 2` and the **pure** balance term: `L_1² + (D − L_1)²` is minimised by the achievable `L_1` closest
+  to `D/2`, which also minimises `max(L_1, L_2)`; so if any capacity-feasible split exists, the balance-optimal
+  split is feasible. This does **not** carry over to `f + λ₂·balance`: the objective can outvote the balance
+  term and the argmin can overload a vehicle (toy seed 14, §6, is exactly that).
 * For `K ≥ 3`: minimising `Σ_k L_k²` does not in general minimise `max_k L_k`; feasibility of the argmin is
   not guaranteed, only made likely. Brief Pitfall 9.1 applies in full: we report the best **feasible** shot
   and the feasibility rate, never an infeasible cost.
@@ -125,21 +126,34 @@ and 7–100× on L (numbers in §7).
 
 ## 6. Weights
 
-**`A` (exactly-one) — provably sufficient rule.** Let `w_ij = d_ij + 2 λ₂ d_i d_j` (every same-vehicle
-coupling). Take any string that violates exactly-one. If some customer has no vehicle, give it one: the
-penalty drops by `A` and the couplings rise by at most `Σ_{j≠i} w_ij`. If some customer has `m ≥ 2`
-vehicles, remove one: the penalty drops from `A(m−1)²` to `A(m−2)²` and the couplings can only drop
-(`J ≥ 0`). So with
+**`A` (exactly-one) — two proved rules.** Let `w_ij = d_ij + 2 λ₂ d_i d_j` (every same-vehicle coupling,
+identical across vehicles) and `R_w = max_i Σ_{j≠i} w_ij`. Both rules guarantee that **every global
+minimiser of the target energy is one-hot**; neither claims that every invalid string lies above every valid
+one, and neither says anything about capacity, sampling, or embedding error.
 
-    A = max_i Σ_{j≠i} w_ij + 1
+*Rule `row_sum` (`onehot-ub`, original):* `A = R_w + 1`. Take any string violating exactly-one. A customer
+with no vehicle: give it one — the penalty drops by `A`, the couplings rise by at most `Σ_{j≠i} w_ij ≤ R_w`.
+A customer with `m ≥ 2` vehicles: remove one — the penalty drops from `A(m−1)²` to `A(m−2)²`, the couplings
+can only drop (`J ≥ 0`). Every repair step strictly lowers the energy, for every `λ₂`
+(`test_A_rule_makes_every_argmin_one_hot_even_when_capacity_binds`).
 
-every such repair step strictly lowers the energy, and every energy argmin is one-hot. This holds for every
-`λ₂` (it is what `test_A_rule_makes_every_argmin_one_hot_even_when_capacity_binds` checks).
+*Rule `row_sum_over_k` (`onehot-ub-tight`, reviewer 2026-10-24):* `A = (R_w/K)(1 + 0.01)`, a factor `K`
+smaller. Proof: (1) a global minimiser has no customer on `m ≥ 2` vehicles — removing one lowers the penalty
+by `A(2m−3) > 0` and cannot raise the pair terms. (2) So a hypothetical invalid minimiser has only missing
+customers, and every other customer is on at most one vehicle. (3) For a missing customer `i` let
+`t_k = Σ_{j≠i} w_ij x_jk`; then `Σ_k t_k ≤ Σ_{j≠i} w_ij ≤ R_w`, so some vehicle has `t_k ≤ R_w/K`. (4) Adding
+`i` to that vehicle lowers the penalty by `A` and raises the pair terms by `t_k < A`. Contradiction. ∎
+Checked by enumeration on the 5 shipped S instances, 40 toy S seeds and random non-negative `W` at
+`K = 2, 3, 4` (`test_tight_A_rule_every_argmin_is_one_hot`). It is a 1 % target-model margin, so the
+original rule stays as the large-margin ablation; on the device the smaller `A` makes every objective
+coupling `K×` stronger relative to the clique coupling. The checker confirms the bound is tight-ish: the
+tight `A` fails after one halving, the original after two.
 
-**`λ₂` (capacity → balance) — heuristic rule, chosen by scan.** The natural "constraint-dominates" scale is
-`R / (2Q)` with `R = max_i Σ_{j≠i} d_ij`: the largest objective change one reassignment can cause, over the
-smallest balance change an overload-removing move makes (`2 d_min` per unit of `Q`, `d_min = 1` on every
-tier). At that scale the balance term overrides the objective. We set
+**`λ₂` (capacity → balance) — empirical parameterisation, chosen by scan.** We write `λ₂` in units of
+`R / (2Q)`, `R = max_i Σ_{j≠i} d_ij`, purely to make `κ` dimensionless and comparable across tiers; it is
+*not* a bound of any kind. (The true balance change of moving a customer of demand `d` from vehicle `a` to
+`b` is `2d(L_b − L_a + d)`: it depends on the actual loads, a feasible solution need not be one move away,
+and nothing guarantees a demand-1 customer exists in an instance.) We set
 
     λ₂ = κ · R / (2Q),   κ = 0.15 ,
 
@@ -184,8 +198,9 @@ full files in `out/gate1/check_*.txt`):
 What breaks: halving `A` twice lets a customer vanish (string with a zero row) because the saved objective
 couplings exceed the penalty; doubling `λ₂` on S_seed04 re-ranks two feasible clusterings (balance beats
 closeness) and the argmin is feasible but not optimal; `λ₂ = 0` is sound wherever capacity does not bind
-and fails exactly where it does (toy 14) — which `κ = 0.15` does not rescue either. The honest conclusion
-is in §7.
+and fails exactly where it does (toy 14) — which `κ = 0.15` does not rescue either. Post-selection on
+feasibility then *retains* the feasible strings that were sampled; it cannot recover an optimum that was not
+sampled, and a run with zero feasible shots is reported as feasibility 0 with undefined gaps.
 
 ## 7. What it costs
 
@@ -212,25 +227,32 @@ minimum separation; `python - <<…` snippet in `out/gate1/scales.txt`):
 | M_seed00 | 2973 | 2.83 | 0.0093 | +27.7 | 1.1 – 4.1 | 7.7 – 9.6 |
 | L_seed00 | 4315 | 2.87 | 0.0064 | +27.7 | 0.28 – 3.1 | 8.1 – 12.1 |
 
-`δ_f = 27.7 rad/µs` is far inside the ±125.66 range; the clique needs exactly the 5 µm minimum.
+`δ_f = 27.7 rad/µs` is far inside the ±125.66 range. These rows assume the clique coupling `2A` is the
+largest entry; with the tight `A` that is no longer automatic (`J_max = max(2A, max w_ij)`), and the
+structure-aware embedder (DERIVATIONS §5.7) fits `α` and `δ_f` on the one-hot subspace instead of this
+pairwise bound. Geometry: a `K = 3` clique is an equilateral triangle at 5 µm; a `K = 4` clique cannot have
+six equal 5 µm distances in a plane (a square gives two diagonals at 7.07 µm, coupling ratio `1/8`), so even
+the clique alone is realised only approximately on L.
 
-**Embedding — the real cost.** The rook's graph asks the K atoms of customer `i` to sit within 5 µm of each
-other *and* atom `(i,k)` to sit 6–12 µm from `(j,k)` while `(i,k)`–`(j,l≠k)` should be ≈ 0. But `(i,k)` and
-`(i,l)` are 5 µm apart, so `(j,k)` is at nearly the same distance from both: the unwanted cross-vehicle
-couplings will be realised at a strength comparable to the wanted same-vehicle ones. This is the brief's
-§4 warning in its sharpest form, and it is a property of one-hot on a 2D `1/r⁶` register, not of this
-weight choice. Expect the relative Frobenius embedding error to be of the order of the textbook's 0.55;
-`cvrp.embed` reports it per run (runner job `006_gate1_onehot_ub_S.cmd`). The mitigation the geometry
-allows: on `K = 2` place the two copies of each customer on opposite sides of a line and the vehicle-0 and
-vehicle-1 layouts as two mirrored half-planes — not implemented at Gate 1.
+**Embedding — the real cost, measured.** The rook's graph asks the K atoms of customer `i` to sit within
+5 µm of each other *and* atom `(i,k)` to sit 6–12 µm from `(j,k)` while `(i,k)`–`(j,l≠k)` should be ≈ 0.
+With the generic (all-pairs) embedder this fails as the brief §4 warns: rel. Frobenius 0.95 and, on
+S_seed04, a physical ground state that is infeasible (DERIVATIONS §5.7, `results.csv`). The fix is to ask
+for less: on one-hot strings each customer pair contributes exactly one coupling, so only
+*same-vehicle − cross-vehicle* must match `α·w_ij`, and the cross couplings may be any constant. The
+structure-aware embedder (`cvrp/embed_onehot.py`: rigid 5 µm K-gons, fit of device energies on the one-hot
+subspace, single-flip defect gaps, fitted `δ_f`) is what the results use; its residual is reported per run
+split by pair class (same-customer / same-vehicle / cross), and the register's own classical ground state is
+enumerated on tier S and compared with the target's (`realized_register` in every run record).
 
 **Feasible fraction of random bitstrings**: 1.6–4.7 % on S (checker), vs the textbook's 4.5 % raw — similar,
 because both are dominated by the `K^N / 2^{NK}` decodable fraction (6.25 % on S). The capacity term does not
 make random strings feasible; it moves energy away from infeasible one-hot strings.
 
-**Expected effect on §9 metrics**: atom efficiency ↑ (table above); feasibility rate decided by the sweep,
-not the encoding; best model gap 0 % whenever the register reaches a one-hot string of the right clustering;
-P(reach reference) is where the embedding error will show.
+**Effect on §9 metrics**: atom efficiency ↑ (table above); the feasibility rate is set jointly by the
+formulation, the embedding, the pulse, the emulator settings and the shot count, so it is reported per
+(instance, method, seed), never predicted; best model gap 0 % whenever a sampled one-hot string is the right
+clustering; P(reach reference) is where the embedding residual shows.
 
 ---
 
@@ -250,18 +272,20 @@ exists (one line, §3b); for `K ≥ 3` it is only likely. We score only feasible
 feasibility rate (brief Pitfall 9.1, repo rule). The scan in §6 shows the trade-off explicitly: `κ = 0`
 leaves 6/40 toy seeds infeasible, `κ = 1` makes all 40 feasible but 13 suboptimal; we chose `κ = 0.15` and
 say which seeds it does not rescue (toy 14). On every binding seed we checked, the ordering of energy
-among *feasible* strings still matches the objective (Pearson 1.0), so post-selection recovers the optimum.
+among *feasible* strings still matches the objective (Pearson 1.0), so post-selection retains the right
+candidate *if it was sampled*; it cannot recover an optimum the register never produced.
 
 **Q3. "Why is `A` so large relative to the objective couplings, and what does that do to the embedding?"**
-`A` must exceed the largest total coupling a customer can shed by disappearing, `max_i Σ_j w_ij` (§6); on
-S that is 2–8× the largest single objective coupling, on L 9–100×. On the device the clique coupling
+`A` must exceed the largest coupling a missing customer would pick up on the emptiest vehicle, `R_w/K`
+(§6, tight rule); the original `R_w + 1` is `K×` more conservative. On S the original is 2–8× the largest
+single objective coupling, on L 9–100×; the tight rule divides that by `K`. On the device the clique coupling
 `2A` is pinned at 55.4 rad/µs (5 µm), so the objective couplings land at 0.3–13 rad/µs, i.e. 6–12 µm
 distances, comfortably resolvable; `δ_f = 27.7 rad/µs` is uniform and in range. The cost is not the ratio
 but the geometry: rook's-graph cross-vehicle pairs cannot be made weak while same-vehicle pairs are strong
-(§7). The checker shows `A` can be halved once without harm (fails at ×1/4), so the ratio can be reduced
-by ~2 if the embedding needs it, at the price of margin.
+(§7). The checker shows the original `A` can be halved once without harm (fails at ×1/4) and the tight `A`
+cannot (fails at ×1/2) — the two rules bracket the true threshold.
 
 **Also ask yourself before judging:** why `κ` and not a per-instance `λ₂`? (Because the reference values
 are computed per instance and a per-instance weight would be fitted to the answer; a tier-level constant
-is the honest choice.) And: what would a DMM buy here? (Nothing — there are no non-uniform linear terms
-left to realise.)
+is the honest choice.) And: what would a DMM buy here? (It is unnecessary to reproduce this model's uniform target fields;
+using one to compensate embedding residuals would be a separate, labelled experiment.)

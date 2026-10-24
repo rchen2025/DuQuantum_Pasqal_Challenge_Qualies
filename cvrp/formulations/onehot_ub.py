@@ -66,8 +66,22 @@ from cvrp.model import register
 class OneHotUnbalanced(_PairwiseDistanceClustering):
     name = "onehot-ub"
     KAPPA = 0.15      # tie-breaker fraction of the constraint-dominates scale (MODEL.md §6)
+    #: how the exactly-one weight A is set from W (w_ij = d_ij + 2 lam2 d_i d_j), MODEL.md §6:
+    #:   "row_sum"        A = max_i sum_{j!=i} w_ij + 1            (original, sufficient, conservative)
+    #:   "row_sum_over_k" A = (max_i sum_{j!=i} w_ij) / K * (1 + 0.01)  (tight: every target-energy
+    #:                     global minimiser is one-hot; proof MODEL.md §6; registered as `onehot-ub-tight`)
+    PENALTY_RULE = "row_sum"
     table_label = "One-hot, no slack, capacity as load-balance (unbalanced penalization)"
     var_formula = "N·K"
+
+    @classmethod
+    def A_rule(cls, W: np.ndarray, K: int) -> float:
+        Rw = float(W.sum(axis=1).max())
+        if cls.PENALTY_RULE == "row_sum":
+            return Rw + 1.0
+        if cls.PENALTY_RULE == "row_sum_over_k":
+            return Rw / K + max(1e-6, 0.01 * Rw / K)
+        raise ValueError(f"unknown PENALTY_RULE {cls.PENALTY_RULE!r}")
 
     def __init__(self, inst: Instance, **weights: float) -> None:
         super().__init__(inst, **weights)
@@ -80,8 +94,11 @@ class OneHotUnbalanced(_PairwiseDistanceClustering):
         lam2 = self.weights["lam2"]
         W = self.D + 2.0 * lam2 * np.outer(d, d)
         np.fill_diagonal(W, 0.0)
-        self.weights.setdefault("A", float(W.sum(axis=1).max()) + 1.0)
+        self.weights.setdefault("A", self.A_rule(W, self.K))
         self.Q()
+
+    def describe(self):
+        return {**super().describe(), "penalty_rule": self.PENALTY_RULE, "kappa": self.KAPPA}
 
     @property
     def n_vars(self) -> int:
@@ -130,3 +147,21 @@ class OneHotUnbalanced(_PairwiseDistanceClustering):
     def balance(self, a) -> float:
         """sum_k L_k^2 of an assignment (the term capacity became)."""
         return float(sum(L * L for L in self.inst.loads(tuple(a))))
+
+
+@register
+class OneHotUnbalancedTight(OneHotUnbalanced):
+    """Same QUBO as ``onehot-ub`` with the tight exactly-one weight A = R_w/K (1 + 1 %).
+
+    Proof that every target-energy global minimiser is one-hot (MODEL.md §6, reviewer 2026-10-24):
+    (1) a customer on m >= 2 vehicles: dropping one assignment lowers the penalty by A(2m-3) > 0 and
+        cannot raise the non-negative pair terms -> a minimiser has no duplicates;
+    (2) a missing customer i: with t_k = sum_{j!=i} w_ij x_jk and every other customer on <= 1 vehicle,
+        sum_k t_k <= sum_j w_ij <= R_w, so some vehicle has t_k <= R_w/K; adding i there lowers the
+        penalty by A and raises the pair terms by t_k < A.  Hence no minimiser has a missing customer.
+    A target-model guarantee only: it says nothing about capacity, sampling, or embedding error.
+    Named separately so that existing `onehot-ub` rows are not changed in place (ablation: before/after).
+    """
+    name = "onehot-ub-tight"
+    PENALTY_RULE = "row_sum_over_k"
+    table_row = False     # same variable count as onehot-ub; keep the Derive 4.1 table to one "ours" row

@@ -247,6 +247,20 @@ def _assignment_from(cl: Clustering, N: int) -> Assignment:
     return tuple(a)
 
 
+def random_onehot_counts(f: Formulation, shots: int, seed: int) -> Dict[str, int]:
+    """Uniform random *assignments* (every customer gets one uniformly random vehicle),
+    encoded as one-hot bitstrings: the assignment-valid random control.  It isolates what
+    the quantum part does beyond producing well-formed strings (brief §9.2 'useful work').
+    Needs a formulation with ``encode``; slack-free one-hot only."""
+    rng = np.random.default_rng(seed)
+    A = rng.integers(0, f.inst.K, size=(shots, f.inst.N))
+    out: Dict[str, int] = {}
+    for a in A:
+        s = "".join(str(int(b)) for b in f.encode(tuple(int(k) for k in a)))
+        out[s] = out.get(s, 0) + 1
+    return out
+
+
 def random_counts(n_vars: int, shots: int, seed: int) -> Dict[str, int]:
     """Uniform random bitstrings: the 'random sampler' method the brief asks
     us to compare the quantum part against."""

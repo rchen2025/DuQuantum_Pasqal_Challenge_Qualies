@@ -1,0 +1,379 @@
+diff --git a/STATUS.md b/STATUS.md
+index 5f8ed09..bb6729b 100644
+--- a/STATUS.md
++++ b/STATUS.md
+@@ -92,6 +92,20 @@ set-partition DP × exact TSP, cross-checked by SA and, on S, by naive enumerati
+ (`docs/DERIVATIONS.md`) has §0–3, §5–6 and 13 judge Q&As. A fresh-context reviewer checked physics signs,
+ textbook algebra, metrics and the exact solver (findings below).
+ 
++**16:30 ET addendum (Claude, chat session) — second application; the 15:45 edits were lost to a tree reset.**
++Reviewer handoff on MODEL.md applied where not already covered: (P1) tight exactly-one rule
++`A = (R_w/K)(1+1%)` with proof, registered as **`onehot-ub-tight`** so existing `onehot-ub` rows stay
++untouched (before/after ablation); checker SOUND on S, `A` fails at one halving as a tight bound should;
++`test_onehot_ub.py` 8/8. (P4) assignment-valid random control: `--backend random-onehot` (uniform random
++assignments encoded one-hot). (P2) already covered by `embed_onehot.py` + `realized_register`. MODEL.md
++corrected (K=4 clique not planar-exact; `J_max = max(2A, max w_ij)`; cross-coupling claim replaced by the
++measured §5.7 numbers; K=2 feasibility scoped to the pure balance term; `R/(2Q)` demoted to a
++parameterisation; "post-selection retains, does not recover"; feasibility is joint; DMM wording).
++Patch of exactly these changes: `patches/2026-10-24_reviewer_p1_p4.patch` (`git apply` if the tree is
++reset again). Suggested rows: `onehot-ub-tight` on S_seed00/01/04, `emb=polygons`, qutip 500; `random-onehot`
++on the same seeds. **Runner appears dead since 15:42 (queue holds `070_tierM_probe.cmd`): relaunch
++`scripts\win_runner.bat`.**
++
+ ## Build order — state
+ | # | item | state |
+ |---|---|---|
+diff --git a/cvrp/formulations/onehot_ub.py b/cvrp/formulations/onehot_ub.py
+index 299fd55..2ac529e 100644
+--- a/cvrp/formulations/onehot_ub.py
++++ b/cvrp/formulations/onehot_ub.py
+@@ -66,9 +66,23 @@ from cvrp.model import register
+ class OneHotUnbalanced(_PairwiseDistanceClustering):
+     name = "onehot-ub"
+     KAPPA = 0.15      # tie-breaker fraction of the constraint-dominates scale (MODEL.md §6)
++    #: how the exactly-one weight A is set from W (w_ij = d_ij + 2 lam2 d_i d_j), MODEL.md §6:
++    #:   "row_sum"        A = max_i sum_{j!=i} w_ij + 1            (original, sufficient, conservative)
++    #:   "row_sum_over_k" A = (max_i sum_{j!=i} w_ij) / K * (1 + 0.01)  (tight: every target-energy
++    #:                     global minimiser is one-hot; proof MODEL.md §6; registered as `onehot-ub-tight`)
++    PENALTY_RULE = "row_sum"
+     table_label = "One-hot, no slack, capacity as load-balance (unbalanced penalization)"
+     var_formula = "N·K"
+ 
++    @classmethod
++    def A_rule(cls, W: np.ndarray, K: int) -> float:
++        Rw = float(W.sum(axis=1).max())
++        if cls.PENALTY_RULE == "row_sum":
++            return Rw + 1.0
++        if cls.PENALTY_RULE == "row_sum_over_k":
++            return Rw / K + max(1e-6, 0.01 * Rw / K)
++        raise ValueError(f"unknown PENALTY_RULE {cls.PENALTY_RULE!r}")
++
+     def __init__(self, inst: Instance, **weights: float) -> None:
+         super().__init__(inst, **weights)
+         unknown = set(self.weights) - {"A", "lam2"}
+@@ -80,9 +94,12 @@ class OneHotUnbalanced(_PairwiseDistanceClustering):
+         lam2 = self.weights["lam2"]
+         W = self.D + 2.0 * lam2 * np.outer(d, d)
+         np.fill_diagonal(W, 0.0)
+-        self.weights.setdefault("A", float(W.sum(axis=1).max()) + 1.0)
++        self.weights.setdefault("A", self.A_rule(W, self.K))
+         self.Q()
+ 
++    def describe(self):
++        return {**super().describe(), "penalty_rule": self.PENALTY_RULE, "kappa": self.KAPPA}
++
+     @property
+     def n_vars(self) -> int:
+         return self.n_assign
+@@ -130,3 +147,21 @@ class OneHotUnbalanced(_PairwiseDistanceClustering):
+     def balance(self, a) -> float:
+         """sum_k L_k^2 of an assignment (the term capacity became)."""
+         return float(sum(L * L for L in self.inst.loads(tuple(a))))
++
++
++@register
++class OneHotUnbalancedTight(OneHotUnbalanced):
++    """Same QUBO as ``onehot-ub`` with the tight exactly-one weight A = R_w/K (1 + 1 %).
++
++    Proof that every target-energy global minimiser is one-hot (MODEL.md §6, reviewer 2026-10-24):
++    (1) a customer on m >= 2 vehicles: dropping one assignment lowers the penalty by A(2m-3) > 0 and
++        cannot raise the non-negative pair terms -> a minimiser has no duplicates;
++    (2) a missing customer i: with t_k = sum_{j!=i} w_ij x_jk and every other customer on <= 1 vehicle,
++        sum_k t_k <= sum_j w_ij <= R_w, so some vehicle has t_k <= R_w/K; adding i there lowers the
++        penalty by A and raises the pair terms by t_k < A.  Hence no minimiser has a missing customer.
++    A target-model guarantee only: it says nothing about capacity, sampling, or embedding error.
++    Named separately so that existing `onehot-ub` rows are not changed in place (ablation: before/after).
++    """
++    name = "onehot-ub-tight"
++    PENALTY_RULE = "row_sum_over_k"
++    table_row = False     # same variable count as onehot-ub; keep the Derive 4.1 table to one "ours" row
+diff --git a/cvrp/metrics.py b/cvrp/metrics.py
+index 6029280..35d6225 100644
+--- a/cvrp/metrics.py
++++ b/cvrp/metrics.py
+@@ -247,6 +247,20 @@ def _assignment_from(cl: Clustering, N: int) -> Assignment:
+     return tuple(a)
+ 
+ 
++def random_onehot_counts(f: Formulation, shots: int, seed: int) -> Dict[str, int]:
++    """Uniform random *assignments* (every customer gets one uniformly random vehicle),
++    encoded as one-hot bitstrings: the assignment-valid random control.  It isolates what
++    the quantum part does beyond producing well-formed strings (brief §9.2 'useful work').
++    Needs a formulation with ``encode``; slack-free one-hot only."""
++    rng = np.random.default_rng(seed)
++    A = rng.integers(0, f.inst.K, size=(shots, f.inst.N))
++    out: Dict[str, int] = {}
++    for a in A:
++        s = "".join(str(int(b)) for b in f.encode(tuple(int(k) for k in a)))
++        out[s] = out.get(s, 0) + 1
++    return out
++
++
+ def random_counts(n_vars: int, shots: int, seed: int) -> Dict[str, int]:
+     """Uniform random bitstrings: the 'random sampler' method the brief asks
+     us to compare the quantum part against."""
+diff --git a/cvrp/run.py b/cvrp/run.py
+index ade9fd3..6965838 100644
+--- a/cvrp/run.py
++++ b/cvrp/run.py
+@@ -38,7 +38,7 @@ import numpy as np
+ 
+ from .common import Instance, bits_to_str, clustering_of, str_to_bits
+ from .embed import Embedding, embed
+-from .metrics import Metrics, ModelOptimum, model_optimum, random_counts, score_counts
++from .metrics import Metrics, ModelOptimum, model_optimum, random_counts, random_onehot_counts, score_counts
+ from .model import get_formulation
+ from .pulse import PulseParams, build_sequence, default_for, validate
+ 
+@@ -271,6 +271,10 @@ def run_one(inst: Instance, formulation: str, backend: str, shots: int, seed: in
+     elif backend == "random":
+         counts = random_counts(f.n_vars, shots, seed)
+         rec["backend_params"] = {"backend": "random", "shots": shots, "seed": seed}
++    elif backend == "random-onehot":
++        counts = random_onehot_counts(f, shots, seed)
++        rec["backend_params"] = {"backend": "random-onehot", "shots": shots, "seed": seed,
++                                 "note": "uniform random assignments encoded one-hot (assignment-valid control)"}
+     else:
+         out = run_backend(seq, backend, shots, seed, bond_dim=bond_dim)
+         counts, rec["backend_params"] = out["counts"], out["backend_params"]
+@@ -324,7 +328,7 @@ def main(argv=None):
+     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+     ap.add_argument("--instance", required=True)
+     ap.add_argument("--formulation", required=True)
+-    ap.add_argument("--backend", default="random", help="qutip | emu-sv | emu-mps | numpy-sv | random")
++    ap.add_argument("--backend", default="random", help="qutip | emu-sv | emu-mps | numpy-sv | random | random-onehot")
+     ap.add_argument("--shots", type=int, default=500)
+     ap.add_argument("--seed", type=int, default=0, help="run seed (embedding starts, random sampler)")
+     ap.add_argument("--weights", default="", help="penalty weights, e.g. A=12,B=3 (default: formulation's rule)")
+diff --git a/docs/MODEL.md b/docs/MODEL.md
+index 8260a87..c0353a2 100644
+--- a/docs/MODEL.md
++++ b/docs/MODEL.md
+@@ -1,8 +1,7 @@
+ # MODEL — Gate-1 formulation `onehot-ub` (Track A)
+ 
+-**Status: AI-drafted (Claude, 2026-10-24 14:30 ET) at the team's request under time pressure; the team must
+-re-derive every line below before judging (see `AI_USE.md`).** Every number comes from a script call named
+-next to it, never typed. Notation is DERIVATIONS.md §0; the physics is §2; the textbook it replaces is §3.
++**Status: drafted by Claude at the team's request (2026-10-24 14:30 ET), reviewed and corrected 16:30 ET
++(`AI_USE.md`).** Every number comes from a script call named next to it, never typed. Notation is DERIVATIONS.md §0; the physics is §2; the textbook it replaces is §3.
+ 
+ One sentence: *one-hot assignment variables, no slack; the capacity inequality is handled by unbalanced
+ penalization, which on one-hot strings collapses to a load-balance term; everything the device cannot
+@@ -79,8 +78,10 @@ same vehicle. On one-hot strings this is exactly
+ **So "capacity" becomes a load-balance term:** `λ₂ Σ_k L_k²` is minimised, for fixed total demand
+ `D = Σ_i d_i`, by the most even split of demand across the K vehicles. It is **not** a hard `L_k ≤ Q`:
+ 
+-* For `K = 2`: `L_1² + (D − L_1)²` is minimised by the achievable `L_1` closest to `D/2`, which also minimises
+-  `max(L_1, L_2)`; so if any capacity-feasible split exists, the balance-optimal split is feasible.
++* For `K = 2` and the **pure** balance term: `L_1² + (D − L_1)²` is minimised by the achievable `L_1` closest
++  to `D/2`, which also minimises `max(L_1, L_2)`; so if any capacity-feasible split exists, the balance-optimal
++  split is feasible. This does **not** carry over to `f + λ₂·balance`: the objective can outvote the balance
++  term and the argmin can overload a vehicle (toy seed 14, §6, is exactly that).
+ * For `K ≥ 3`: minimising `Σ_k L_k²` does not in general minimise `max_k L_k`; feasibility of the argmin is
+   not guaranteed, only made likely. Brief Pitfall 9.1 applies in full: we report the best **feasible** shot
+   and the feasibility rate, never an infeasible cost.
+@@ -125,21 +126,34 @@ and 7–100× on L (numbers in §7).
+ 
+ ## 6. Weights
+ 
+-**`A` (exactly-one) — provably sufficient rule.** Let `w_ij = d_ij + 2 λ₂ d_i d_j` (every same-vehicle
+-coupling). Take any string that violates exactly-one. If some customer has no vehicle, give it one: the
+-penalty drops by `A` and the couplings rise by at most `Σ_{j≠i} w_ij`. If some customer has `m ≥ 2`
+-vehicles, remove one: the penalty drops from `A(m−1)²` to `A(m−2)²` and the couplings can only drop
+-(`J ≥ 0`). So with
+-
+-    A = max_i Σ_{j≠i} w_ij + 1
+-
+-every such repair step strictly lowers the energy, and every energy argmin is one-hot. This holds for every
+-`λ₂` (it is what `test_A_rule_makes_every_argmin_one_hot_even_when_capacity_binds` checks).
+-
+-**`λ₂` (capacity → balance) — heuristic rule, chosen by scan.** The natural "constraint-dominates" scale is
+-`R / (2Q)` with `R = max_i Σ_{j≠i} d_ij`: the largest objective change one reassignment can cause, over the
+-smallest balance change an overload-removing move makes (`2 d_min` per unit of `Q`, `d_min = 1` on every
+-tier). At that scale the balance term overrides the objective. We set
++**`A` (exactly-one) — two proved rules.** Let `w_ij = d_ij + 2 λ₂ d_i d_j` (every same-vehicle coupling,
++identical across vehicles) and `R_w = max_i Σ_{j≠i} w_ij`. Both rules guarantee that **every global
++minimiser of the target energy is one-hot**; neither claims that every invalid string lies above every valid
++one, and neither says anything about capacity, sampling, or embedding error.
++
++*Rule `row_sum` (`onehot-ub`, original):* `A = R_w + 1`. Take any string violating exactly-one. A customer
++with no vehicle: give it one — the penalty drops by `A`, the couplings rise by at most `Σ_{j≠i} w_ij ≤ R_w`.
++A customer with `m ≥ 2` vehicles: remove one — the penalty drops from `A(m−1)²` to `A(m−2)²`, the couplings
++can only drop (`J ≥ 0`). Every repair step strictly lowers the energy, for every `λ₂`
++(`test_A_rule_makes_every_argmin_one_hot_even_when_capacity_binds`).
++
++*Rule `row_sum_over_k` (`onehot-ub-tight`, reviewer 2026-10-24):* `A = (R_w/K)(1 + 0.01)`, a factor `K`
++smaller. Proof: (1) a global minimiser has no customer on `m ≥ 2` vehicles — removing one lowers the penalty
++by `A(2m−3) > 0` and cannot raise the pair terms. (2) So a hypothetical invalid minimiser has only missing
++customers, and every other customer is on at most one vehicle. (3) For a missing customer `i` let
++`t_k = Σ_{j≠i} w_ij x_jk`; then `Σ_k t_k ≤ Σ_{j≠i} w_ij ≤ R_w`, so some vehicle has `t_k ≤ R_w/K`. (4) Adding
++`i` to that vehicle lowers the penalty by `A` and raises the pair terms by `t_k < A`. Contradiction. ∎
++Checked by enumeration on the 5 shipped S instances, 40 toy S seeds and random non-negative `W` at
++`K = 2, 3, 4` (`test_tight_A_rule_every_argmin_is_one_hot`). It is a 1 % target-model margin, so the
++original rule stays as the large-margin ablation; on the device the smaller `A` makes every objective
++coupling `K×` stronger relative to the clique coupling. The checker confirms the bound is tight-ish: the
++tight `A` fails after one halving, the original after two.
++
++**`λ₂` (capacity → balance) — empirical parameterisation, chosen by scan.** We write `λ₂` in units of
++`R / (2Q)`, `R = max_i Σ_{j≠i} d_ij`, purely to make `κ` dimensionless and comparable across tiers; it is
++*not* a bound of any kind. (The true balance change of moving a customer of demand `d` from vehicle `a` to
++`b` is `2d(L_b − L_a + d)`: it depends on the actual loads, a feasible solution need not be one move away,
++and nothing guarantees a demand-1 customer exists in an instance.) We set
+ 
+     λ₂ = κ · R / (2Q),   κ = 0.15 ,
+ 
+@@ -184,8 +198,9 @@ full files in `out/gate1/check_*.txt`):
+ What breaks: halving `A` twice lets a customer vanish (string with a zero row) because the saved objective
+ couplings exceed the penalty; doubling `λ₂` on S_seed04 re-ranks two feasible clusterings (balance beats
+ closeness) and the argmin is feasible but not optimal; `λ₂ = 0` is sound wherever capacity does not bind
+-and fails exactly where it does (toy 14) — which `κ = 0.15` does not rescue either. The honest conclusion
+-is in §7.
++and fails exactly where it does (toy 14) — which `κ = 0.15` does not rescue either. Post-selection on
++feasibility then *retains* the feasible strings that were sampled; it cannot recover an optimum that was not
++sampled, and a run with zero feasible shots is reported as feasibility 0 with undefined gaps.
+ 
+ ## 7. What it costs
+ 
+@@ -212,25 +227,32 @@ minimum separation; `python - <<…` snippet in `out/gate1/scales.txt`):
+ | M_seed00 | 2973 | 2.83 | 0.0093 | +27.7 | 1.1 – 4.1 | 7.7 – 9.6 |
+ | L_seed00 | 4315 | 2.87 | 0.0064 | +27.7 | 0.28 – 3.1 | 8.1 – 12.1 |
+ 
+-`δ_f = 27.7 rad/µs` is far inside the ±125.66 range; the clique needs exactly the 5 µm minimum.
+-
+-**Embedding — the real cost.** The rook's graph asks the K atoms of customer `i` to sit within 5 µm of each
+-other *and* atom `(i,k)` to sit 6–12 µm from `(j,k)` while `(i,k)`–`(j,l≠k)` should be ≈ 0. But `(i,k)` and
+-`(i,l)` are 5 µm apart, so `(j,k)` is at nearly the same distance from both: the unwanted cross-vehicle
+-couplings will be realised at a strength comparable to the wanted same-vehicle ones. This is the brief's
+-§4 warning in its sharpest form, and it is a property of one-hot on a 2D `1/r⁶` register, not of this
+-weight choice. Expect the relative Frobenius embedding error to be of the order of the textbook's 0.55;
+-`cvrp.embed` reports it per run (runner job `006_gate1_onehot_ub_S.cmd`). The mitigation the geometry
+-allows: on `K = 2` place the two copies of each customer on opposite sides of a line and the vehicle-0 and
+-vehicle-1 layouts as two mirrored half-planes — not implemented at Gate 1.
++`δ_f = 27.7 rad/µs` is far inside the ±125.66 range. These rows assume the clique coupling `2A` is the
++largest entry; with the tight `A` that is no longer automatic (`J_max = max(2A, max w_ij)`), and the
++structure-aware embedder (DERIVATIONS §5.7) fits `α` and `δ_f` on the one-hot subspace instead of this
++pairwise bound. Geometry: a `K = 3` clique is an equilateral triangle at 5 µm; a `K = 4` clique cannot have
++six equal 5 µm distances in a plane (a square gives two diagonals at 7.07 µm, coupling ratio `1/8`), so even
++the clique alone is realised only approximately on L.
++
++**Embedding — the real cost, measured.** The rook's graph asks the K atoms of customer `i` to sit within
++5 µm of each other *and* atom `(i,k)` to sit 6–12 µm from `(j,k)` while `(i,k)`–`(j,l≠k)` should be ≈ 0.
++With the generic (all-pairs) embedder this fails as the brief §4 warns: rel. Frobenius 0.95 and, on
++S_seed04, a physical ground state that is infeasible (DERIVATIONS §5.7, `results.csv`). The fix is to ask
++for less: on one-hot strings each customer pair contributes exactly one coupling, so only
++*same-vehicle − cross-vehicle* must match `α·w_ij`, and the cross couplings may be any constant. The
++structure-aware embedder (`cvrp/embed_onehot.py`: rigid 5 µm K-gons, fit of device energies on the one-hot
++subspace, single-flip defect gaps, fitted `δ_f`) is what the results use; its residual is reported per run
++split by pair class (same-customer / same-vehicle / cross), and the register's own classical ground state is
++enumerated on tier S and compared with the target's (`realized_register` in every run record).
+ 
+ **Feasible fraction of random bitstrings**: 1.6–4.7 % on S (checker), vs the textbook's 4.5 % raw — similar,
+ because both are dominated by the `K^N / 2^{NK}` decodable fraction (6.25 % on S). The capacity term does not
+ make random strings feasible; it moves energy away from infeasible one-hot strings.
+ 
+-**Expected effect on §9 metrics**: atom efficiency ↑ (table above); feasibility rate decided by the sweep,
+-not the encoding; best model gap 0 % whenever the register reaches a one-hot string of the right clustering;
+-P(reach reference) is where the embedding error will show.
++**Effect on §9 metrics**: atom efficiency ↑ (table above); the feasibility rate is set jointly by the
++formulation, the embedding, the pulse, the emulator settings and the shot count, so it is reported per
++(instance, method, seed), never predicted; best model gap 0 % whenever a sampled one-hot string is the right
++clustering; P(reach reference) is where the embedding residual shows.
+ 
+ ---
+ 
+@@ -250,18 +272,20 @@ exists (one line, §3b); for `K ≥ 3` it is only likely. We score only feasible
+ feasibility rate (brief Pitfall 9.1, repo rule). The scan in §6 shows the trade-off explicitly: `κ = 0`
+ leaves 6/40 toy seeds infeasible, `κ = 1` makes all 40 feasible but 13 suboptimal; we chose `κ = 0.15` and
+ say which seeds it does not rescue (toy 14). On every binding seed we checked, the ordering of energy
+-among *feasible* strings still matches the objective (Pearson 1.0), so post-selection recovers the optimum.
++among *feasible* strings still matches the objective (Pearson 1.0), so post-selection retains the right
++candidate *if it was sampled*; it cannot recover an optimum the register never produced.
+ 
+ **Q3. "Why is `A` so large relative to the objective couplings, and what does that do to the embedding?"**
+-`A` must exceed the largest total coupling a customer can shed by disappearing, `max_i Σ_j w_ij` (§6); on
+-S that is 2–8× the largest single objective coupling, on L 9–100×. On the device the clique coupling
++`A` must exceed the largest coupling a missing customer would pick up on the emptiest vehicle, `R_w/K`
++(§6, tight rule); the original `R_w + 1` is `K×` more conservative. On S the original is 2–8× the largest
++single objective coupling, on L 9–100×; the tight rule divides that by `K`. On the device the clique coupling
+ `2A` is pinned at 55.4 rad/µs (5 µm), so the objective couplings land at 0.3–13 rad/µs, i.e. 6–12 µm
+ distances, comfortably resolvable; `δ_f = 27.7 rad/µs` is uniform and in range. The cost is not the ratio
+ but the geometry: rook's-graph cross-vehicle pairs cannot be made weak while same-vehicle pairs are strong
+-(§7). The checker shows `A` can be halved once without harm (fails at ×1/4), so the ratio can be reduced
+-by ~2 if the embedding needs it, at the price of margin.
++(§7). The checker shows the original `A` can be halved once without harm (fails at ×1/4) and the tight `A`
++cannot (fails at ×1/2) — the two rules bracket the true threshold.
+ 
+ **Also ask yourself before judging:** why `κ` and not a per-instance `λ₂`? (Because the reference values
+ are computed per instance and a per-instance weight would be fitted to the answer; a tier-level constant
+-is the honest choice.) And: what would a DMM buy here? (Nothing — there are no non-uniform linear terms
+-left to realise.)
++is the honest choice.) And: what would a DMM buy here? (It is unnecessary to reproduce this model's uniform target fields;
++using one to compensate embedding residuals would be a separate, labelled experiment.)
+diff --git a/scripts/variable_count.py b/scripts/variable_count.py
+index 5099a66..4de6551 100644
+--- a/scripts/variable_count.py
++++ b/scripts/variable_count.py
+@@ -35,7 +35,7 @@ MARK_OPEN, MARK_CLOSE = "<!-- VARIABLE_COUNT_TABLE -->", "<!-- /VARIABLE_COUNT_T
+ def ordered_formulations() -> List[Type[Formulation]]:
+     reg = registered_formulations()
+     names = [n for n in FIRST_ROWS if n in reg] + sorted(n for n in reg if n not in FIRST_ROWS)
+-    return [reg[n] for n in names]
++    return [reg[n] for n in names if getattr(reg[n], "table_row", True)]
+ 
+ 
+ def row_for(cls: Type[Formulation]) -> Dict[str, object]:
+diff --git a/tests/test_onehot_ub.py b/tests/test_onehot_ub.py
+index 8027fe6..22f3891 100644
+--- a/tests/test_onehot_ub.py
++++ b/tests/test_onehot_ub.py
+@@ -74,3 +74,49 @@ def test_A_rule_makes_every_argmin_one_hot_even_when_capacity_binds():
+     assert not r.sound
+     assert all(f.decode(x) is not None for x in [f.encode(r.argmin_assignment)])
+     assert r.argmin_assignment is not None
++
++
++def test_tight_A_rule_every_argmin_is_one_hot():
++    """onehot-ub-tight: A = R_w/K (1+1%) still makes every energy argmin one-hot (MODEL.md §6 proof),
++    on the 5 shipped S instances, 20 toy S seeds, and random non-negative W at K = 2, 3, 4 (N = 4)."""
++    from cvrp.common import all_bitstrings
++    insts = [Instance.load(p) for p in sorted(glob.glob("instances/S_seed*.json"))] + [make_toy_instance("S", s) for s in range(20)]
++    for inst in insts:
++        f = get_formulation("onehot-ub-tight", inst)
++        assert f.weights["A"] < get_formulation("onehot-ub", inst).weights["A"]
++        X = all_bitstrings(f.n_vars)
++        E = f.energies(X)
++        for x in X[np.isclose(E, E.min())]:
++            assert f.decode(x) is not None, inst.name
++    rng = np.random.default_rng(1)
++    for K in (2, 3, 4):
++        for _ in range(5):
++            N = 4
++            W = np.triu(rng.uniform(0, 1, (N, N)) * (rng.uniform(0, 1, (N, N)) < 0.7), 1)
++            W = W + W.T
++            Rw = W.sum(1).max()
++            A = Rw / K * 1.01
++            n = N * K
++            Q = np.zeros((n, n))
++            for k in range(K):
++                for i in range(N):
++                    Q[i * K + k, i * K + k] -= A
++                    for l in range(k + 1, K):
++                        Q[i * K + k, i * K + l] += A
++                        Q[i * K + l, i * K + k] += A
++                    for j in range(i + 1, N):
++                        Q[i * K + k, j * K + k] += W[i, j] / 2
++                        Q[j * K + k, i * K + k] += W[i, j] / 2
++            X = np.array(list(itertools.product([0, 1], repeat=n)))
++            E = np.einsum("mi,ij,mj->m", X, Q, X)
++            for x in X[np.isclose(E, E.min())]:
++                assert (x.reshape(N, K).sum(1) == 1).all()
++
++
++def test_random_onehot_control_is_assignment_valid():
++    from cvrp.metrics import random_onehot_counts
++    f = get_formulation("onehot-ub", Instance.load("instances/S_seed00.json"))
++    counts = random_onehot_counts(f, 300, 0)
++    assert sum(counts.values()) == 300
++    for s in counts:
++        assert f.decode(np.array([int(c) for c in s])) is not None

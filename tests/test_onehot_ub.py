@@ -74,3 +74,49 @@ def test_A_rule_makes_every_argmin_one_hot_even_when_capacity_binds():
     assert not r.sound
     assert all(f.decode(x) is not None for x in [f.encode(r.argmin_assignment)])
     assert r.argmin_assignment is not None
+
+
+def test_tight_A_rule_every_argmin_is_one_hot():
+    """onehot-ub-tight: A = R_w/K (1+1%) still makes every energy argmin one-hot (MODEL.md §6 proof),
+    on the 5 shipped S instances, 20 toy S seeds, and random non-negative W at K = 2, 3, 4 (N = 4)."""
+    from cvrp.common import all_bitstrings
+    insts = [Instance.load(p) for p in sorted(glob.glob("instances/S_seed*.json"))] + [make_toy_instance("S", s) for s in range(20)]
+    for inst in insts:
+        f = get_formulation("onehot-ub-tight", inst)
+        assert f.weights["A"] < get_formulation("onehot-ub", inst).weights["A"]
+        X = all_bitstrings(f.n_vars)
+        E = f.energies(X)
+        for x in X[np.isclose(E, E.min())]:
+            assert f.decode(x) is not None, inst.name
+    rng = np.random.default_rng(1)
+    for K in (2, 3, 4):
+        for _ in range(5):
+            N = 4
+            W = np.triu(rng.uniform(0, 1, (N, N)) * (rng.uniform(0, 1, (N, N)) < 0.7), 1)
+            W = W + W.T
+            Rw = W.sum(1).max()
+            A = Rw / K * 1.01
+            n = N * K
+            Q = np.zeros((n, n))
+            for k in range(K):
+                for i in range(N):
+                    Q[i * K + k, i * K + k] -= A
+                    for l in range(k + 1, K):
+                        Q[i * K + k, i * K + l] += A
+                        Q[i * K + l, i * K + k] += A
+                    for j in range(i + 1, N):
+                        Q[i * K + k, j * K + k] += W[i, j] / 2
+                        Q[j * K + k, i * K + k] += W[i, j] / 2
+            X = np.array(list(itertools.product([0, 1], repeat=n)))
+            E = np.einsum("mi,ij,mj->m", X, Q, X)
+            for x in X[np.isclose(E, E.min())]:
+                assert (x.reshape(N, K).sum(1) == 1).all()
+
+
+def test_random_onehot_control_is_assignment_valid():
+    from cvrp.metrics import random_onehot_counts
+    f = get_formulation("onehot-ub", Instance.load("instances/S_seed00.json"))
+    counts = random_onehot_counts(f, 300, 0)
+    assert sum(counts.values()) == 300
+    for s in counts:
+        assert f.decode(np.array([int(c) for c in s])) is not None

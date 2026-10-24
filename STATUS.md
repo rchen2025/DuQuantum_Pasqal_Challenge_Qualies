@@ -92,6 +92,20 @@ set-partition DP × exact TSP, cross-checked by SA and, on S, by naive enumerati
 (`docs/DERIVATIONS.md`) has §0–3, §5–6 and 13 judge Q&As. A fresh-context reviewer checked physics signs,
 textbook algebra, metrics and the exact solver (findings below).
 
+**16:30 ET addendum (Claude, chat session) — second application; the 15:45 edits were lost to a tree reset.**
+Reviewer handoff on MODEL.md applied where not already covered: (P1) tight exactly-one rule
+`A = (R_w/K)(1+1%)` with proof, registered as **`onehot-ub-tight`** so existing `onehot-ub` rows stay
+untouched (before/after ablation); checker SOUND on S, `A` fails at one halving as a tight bound should;
+`test_onehot_ub.py` 8/8. (P4) assignment-valid random control: `--backend random-onehot` (uniform random
+assignments encoded one-hot). (P2) already covered by `embed_onehot.py` + `realized_register`. MODEL.md
+corrected (K=4 clique not planar-exact; `J_max = max(2A, max w_ij)`; cross-coupling claim replaced by the
+measured §5.7 numbers; K=2 feasibility scoped to the pure balance term; `R/(2Q)` demoted to a
+parameterisation; "post-selection retains, does not recover"; feasibility is joint; DMM wording).
+Patch of exactly these changes: `patches/2026-10-24_reviewer_p1_p4.patch` (`git apply` if the tree is
+reset again). Suggested rows: `onehot-ub-tight` on S_seed00/01/04, `emb=polygons`, qutip 500; `random-onehot`
+on the same seeds. **Runner appears dead since 15:42 (queue holds `070_tierM_probe.cmd`): relaunch
+`scripts\win_runner.bat`.**
+
 ## Build order — state
 | # | item | state |
 |---|---|---|
