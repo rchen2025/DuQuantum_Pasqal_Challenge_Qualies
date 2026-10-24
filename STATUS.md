@@ -1,4 +1,4 @@
-# STATUS — Sat 2026-10-24, 13:40 ET (hackathon day; freeze Sun 11:00 ET)
+# STATUS — Sat 2026-10-24, 13:00 ET (hackathon day; freeze Sun 11:00 ET)
 
 **What changed and why.** Items 0–6 of the build are done and committed: the whole Track-A pipeline runs end
 to end on a real tier-S instance with a throwaway textbook formulation (`python -m cvrp.run ... --backend
