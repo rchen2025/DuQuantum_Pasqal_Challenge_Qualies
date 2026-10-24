@@ -49,7 +49,7 @@ qubo-solver's quantum pipeline (BLaDE + local_energy_scale, 5940 ns) reaches 0.7
 instances — a strong baseline that ours now beats on all three seeds.
 
 **Bad news for M/L, to decide at Gate 2:** the one-hot rook's graph does not embed for K = 3 (tier M, 30
-atoms). With 5 µm triangles the one-hot-subspace fit residual is 38 (S: 0.15–0.32), the single-flip
+atoms). With 5 µm triangles the one-hot-subspace fit residual is 38 (S: 0.06–0.32), the single-flip
 defects sit *below* their parents and the model optimum ranks 10 000th among one-hot strings; opening the
 polygons to 6–10 µm (lower energy scale) does not help (residual 0.86–0.95, rank ≥ 1279, register radius at
 the 38 µm limit). Cause: K copies 5 µm apart cannot be far from a neighbouring customer's K copies, so the

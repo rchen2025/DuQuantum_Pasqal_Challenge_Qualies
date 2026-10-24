@@ -980,8 +980,8 @@ The plain uniform-bitstring sampler (0.7–1 %) is the weaker control and is als
 **Q-A. Is the big exactly-one weight A just a safety factor? What happens with the tight one?** No — it is
 physically load-bearing. `onehot-ub-tight` uses the tight bound A = R_w/K·(1+1 %) (MODEL.md P1, sound by the
 same argument and checker-verified) with the same embedder and pulse: P(reach optimum) 0.94 → 0.03 on S_seed00
-(the realised register's ground state becomes the third-best clustering), 0.95 → 0.56 on S_seed01, 0.89 → 0.96
-on S_seed04. A sets the single-flip defect gaps in device units (§5.7) and the margin the embedding error can eat;
+(the realised register's ground state becomes the third-best clustering), 0.95 → 0.52 on S_seed01, 0.89 → 0.94
+on S_seed04 (qutip, 500 shots; the in-house exact state-vector rows give 0.03 / 0.56 / 0.96). A sets the single-flip defect gaps in device units (§5.7) and the margin the embedding error can eat;
 the tight value leaves none on two of three seeds. We keep the provable rule for the headline and report tight
 as the ablation; its pulse was not re-tuned. → MODEL.md §6, §5.7, results.csv (`onehot-ub-tight`).
 

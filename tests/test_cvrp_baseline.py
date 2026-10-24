@@ -200,7 +200,7 @@ def test_classical_sa_record_on_S_seed00():
     _torch_stack()
     inst = _inst()
     rec = B.run_classical(inst, "onehot-ub", seed=0, algorithm="simulated_annealing", sa_iters=2000, verbose=False)
-    assert rec["method"] == "onehot-ub+qubosolver-sa"
+    assert rec["method"] == "onehot-ub+qubosolver-sa-stated"  # default sa_restarts=10 -> stated-parameter SA
     assert sum(rec["counts"].values()) == 1 and len(next(iter(rec["counts"]))) == 8
     m = rec["metrics_raw"]
     assert m["shots"] == 1 and m["feasible_rate"] in (0.0, 1.0)
