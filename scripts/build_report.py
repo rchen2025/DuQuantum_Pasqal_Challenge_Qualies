@@ -54,11 +54,14 @@ def main(argv=None):
     tex = WRAPPER % {"title": meta.get("title", "Report"), "subtitle": meta.get("subtitle", ""), "date": meta.get("date", ""), "body": body}
     (out / "report.tex").write_text(tex, encoding="utf-8")
     engine = "xelatex" if shutil.which("xelatex") else "pdflatex"
+    (out / "report.pdf").unlink(missing_ok=True)      # a failed build must never leave a stale PDF behind
     for _ in range(2):
         r = subprocess.run([engine, "-interaction=nonstopmode", "-halt-on-error", "report.tex"], cwd=out, capture_output=True, text=True)
-    if not (out / "report.pdf").exists():
+    if r.returncode != 0 or not (out / "report.pdf").exists():
         print(r.stdout[-3000:])
-        sys.exit("LaTeX failed")
+        sys.exit(f"LaTeX failed (exit {r.returncode})")
+    if "\\usepackage" in body:
+        sys.exit("pandoc emitted \\usepackage into the body: the YAML header was not recognised (blank line before it?)")
     for ext in ("aux", "log", "out"):
         (out / f"report.{ext}").unlink(missing_ok=True)
     pages = None
