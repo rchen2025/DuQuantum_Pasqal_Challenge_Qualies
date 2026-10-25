@@ -42,7 +42,7 @@ deliverables: validate variable-table
 report:
 	mkdir -p report/figures
 	-$(PY) -m cvrp.report out/m1 out/m2 out/m3 --figures report/figures --results results.csv
-	$(PY) scripts/report_tables.py
+	$(PY) scripts/report_tables.py --tiers S M L --controls-only-for S_seed00
 	$(PY) scripts/build_report.py --max-pages 4
 
 clean:

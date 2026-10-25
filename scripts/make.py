@@ -57,7 +57,7 @@ def main(argv=None):
         (ROOT / "report/figures").mkdir(parents=True, exist_ok=True)
         run(PY, "-m", "cvrp.report", "out/m1", "out/m2", "out/m3", "--figures", "report/figures", "--results", "results.csv",
             "--pulse-scan", "out/m2_pulse/scan.md", check=False)
-        run(PY, "scripts/report_tables.py")
+        run(PY, "scripts/report_tables.py", "--tiers", "S", "M", "L", "--controls-only-for", "S_seed00")
         run(PY, "scripts/build_report.py", "--max-pages", "4")
     elif target == "deliverables":
         run(PY, "-m", "cvrp.validator", "instances/")
