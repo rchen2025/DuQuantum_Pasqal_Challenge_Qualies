@@ -151,8 +151,8 @@ def collect(dirs: Iterable[str | Path]) -> List[Dict[str, Any]]:
 
 
 def write_csv(rows: List[Dict[str, Any]], path: str | Path) -> None:
-    with Path(path).open("w", newline="") as fh:
-        w = csv.DictWriter(fh, fieldnames=COLUMNS)
+    with Path(path).open("w", newline="", encoding="utf-8") as fh:
+        w = csv.DictWriter(fh, fieldnames=COLUMNS, lineterminator="\n")
         w.writeheader()
         for r in rows:
             w.writerow({k: _fmt(r.get(k)) for k in COLUMNS})

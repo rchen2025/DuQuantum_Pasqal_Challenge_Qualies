@@ -46,7 +46,16 @@ def wilson_interval(successes: int, trials: int) -> List[float]:
     denominator = 1 + z * z / trials
     center = (p + z * z / (2 * trials)) / denominator
     radius = z * math.sqrt(p * (1 - p) / trials + z * z / (4 * trials * trials)) / denominator
-    return [max(0.0, center - radius), min(1.0, center + radius)]
+    low = center - radius
+    high = center + radius
+    # Roundoff can leave a tiny positive lower endpoint for 0/n (or a tiny
+    # negative distance from one for n/n). Preserve the exact boundary that
+    # the observed binomial outcome establishes.
+    if successes == 0:
+        low = 0.0
+    if successes == trials:
+        high = 1.0
+    return [max(0.0, low), min(1.0, high)]
 
 
 @dataclass

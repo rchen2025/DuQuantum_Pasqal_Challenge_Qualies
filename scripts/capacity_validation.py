@@ -110,7 +110,9 @@ def ground_state_audit(inst, kappa, include_states=False):
     ground = np.abs(energies - energies.min()) <= TOL
     optimum = model_optimum(f)
     feasible_ground_objectives = [float(f.objective(a)) for a, ok in zip(assignments, ground & feasible) if ok]
-    gaps = [gap_percent(v, optimum.value) for v in feasible_ground_objectives]
+    gaps = [gap_percent(v, optimum.value) if optimum.value != 0
+            else (0.0 if abs(v) <= TOL else math.inf)
+            for v in feasible_ground_objectives]
     result = {
         "instance": inst.name, "kappa": float(kappa), **f.weights,
         "n_states": len(X), "literal_max_abs_error": err,
@@ -225,7 +227,8 @@ def worker(args):
     from cvrp.run import run_one, save_record
     inst = Instance.load(args.instance)
     np.random.seed(args.seed)
-    cache_dir = Path(args.out) / "embeddings" / f"kappa{args.kappa:g}"
+    out = Path(args.out).resolve()
+    cache_dir = out / "embeddings" / f"kappa{args.kappa:g}"
     record = run_one(inst, "onehot-ub", "qutip", 500, args.seed,
         weights=weight_for(inst, args.kappa),
         embed_kw={"embedder": "polygons", "cache_dir": str(cache_dir)},
@@ -242,7 +245,7 @@ def worker(args):
         record["confidence_intervals_95"] = {
             k: wilson(round(m[k]*m["shots"]), m["shots"])
             for k in ("feasible_rate", "p_reach_model_optimum", "p_reach_cvrp_reference")}
-    destination = Path(args.out) / ("dry_runs" if args.dry_run else "records")
+    destination = out / ("dry_runs" if args.dry_run else "records")
     print(save_record(record, destination), flush=True)
 
 
@@ -266,7 +269,7 @@ def run_stage(command, timeout, log_path):
 
 
 def quantum(out, regression=False):
-    out = Path(out)
+    out = Path(out).resolve()
     selection = json.loads((out / "selection.json").read_text())
     manifest = json.loads((out / "manifest.json").read_text())
     chosen = selection["selected_kappa"]
@@ -297,7 +300,7 @@ def quantum(out, regression=False):
 
 
 def summarize(out):
-    out = Path(out)
+    out = Path(out).resolve()
     rows = []
     for path in sorted((out / "records").glob("*.json")):
         r = json.loads(path.read_text())

@@ -21,3 +21,5 @@ networkx==3.7
 pulp==3.3.0
 pytest==9.0.2
 python-dotenv==1.2.1
+pypandoc-binary==1.15
+pypdf==6.1.3

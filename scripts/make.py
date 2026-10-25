@@ -11,6 +11,7 @@ Same commands as the Makefile, run with the current interpreter.
 from __future__ import annotations
 
 import os
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -57,7 +58,10 @@ def main(argv=None):
         (ROOT / "report/figures").mkdir(parents=True, exist_ok=True)
         run(PY, "-m", "cvrp.report", "out/m1", "out/m2", "out/m3", "--figures", "report/figures", "--results", "results.csv",
             "--pulse-scan", "out/m2_pulse/scan.md", check=False)
+        run(PY, "scripts/build_overview.py")
         run(PY, "scripts/report_tables.py", "--tiers", "S", "M", "L", "--controls-only-for", "S_seed00")
+        # build_report.py uses pypandoc's bundled converter and discovers a
+        # user-scoped MiKTeX installation when TeX is not on PATH.
         run(PY, "scripts/build_report.py", "--max-pages", "4")
     elif target == "deliverables":
         run(PY, "-m", "cvrp.validator", "instances/")

@@ -91,16 +91,21 @@ def check_instances(folder: Path) -> int:
 
 
 def write_md(table: str, path: Path = MD_PATH) -> None:
-    text = path.read_text()
+    text = path.read_text(encoding="utf-8")
     pattern = re.compile(re.escape(MARK_OPEN) + r".*?" + re.escape(MARK_CLOSE), re.S)
     if not pattern.search(text):
         raise SystemExit(f"{path} has no {MARK_OPEN} ... {MARK_CLOSE} block")
     new = f"{MARK_OPEN}\n{table}\n{MARK_CLOSE}"
-    path.write_text(pattern.sub(lambda _m: new, text))
+    path.write_text(pattern.sub(lambda _m: new, text), encoding="utf-8")
     print(f"wrote table into {path}")
 
 
 def main(argv: List[str]) -> int:
+    # Windows consoles commonly default to cp1252, which cannot encode the
+    # ceiling symbols in the generated explanation.  Keep the CLI usable even
+    # when PYTHONUTF8 was not set by the caller.
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(errors="replace")
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     p.add_argument("--check", metavar="INSTANCES_DIR", help="assert n_vars == count_vars on every instance JSON")
     p.add_argument("--write-md", action="store_true", help=f"replace the marked block in {MD_PATH.relative_to(ROOT)}")
