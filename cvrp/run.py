@@ -286,11 +286,17 @@ def run_one(inst: Instance, formulation: str, backend: str, shots: int, seed: in
     m_raw, _ = score_counts(counts, f, inst, mopt=mopt)
     rec["metrics_raw"] = m_raw.to_dict()
     if repair != "none":
-        if repair != "energy-descent":
-            raise ValueError("only repair=energy-descent is implemented")
-        tr = energy_descent_repair(f.Q(), f.offset)
+        if repair == "energy-descent":
+            tr = energy_descent_repair(f.Q(), f.offset)
+        elif repair == "capacity-local":
+            from .repair import capacity_local_repair
+            tr = capacity_local_repair(f)
+        else:
+            raise ValueError("unknown repair (none | energy-descent | capacity-local)")
         m_rep, _ = score_counts(counts, f, inst, mopt=mopt, transform=tr)
         rec["metrics_repaired"] = m_rep.to_dict()
+        if hasattr(tr, "stats"):
+            rec["repair_stats"] = tr.stats()
     rec["wall_s"] = time.perf_counter() - t_start
     if verbose:
         print("   raw:      " + m_raw.summary().replace("\n", "\n             "))
@@ -338,7 +344,8 @@ def main(argv=None):
     ap.add_argument("--bond-dim", type=int, default=64)
     ap.add_argument("--embedder", default="generic", help="generic | polygons (structure-aware one-hot embedding, cvrp.embed_onehot)")
     ap.add_argument("--embedding-cache", default=EMBEDDING_CACHE, help="directory of cached registers ('' to disable)")
-    ap.add_argument("--repair", default="none", help="none | energy-descent (labelled separately)")
+    ap.add_argument("--repair", default="none", choices=("none", "energy-descent", "capacity-local"),
+                    help="classical post-processing (labelled separately)")
     ap.add_argument("--counts", default=None, help="JSON file bitstring->count to score instead of sampling")
     ap.add_argument("--dry-run", action="store_true")
     ap.add_argument("--out", default="out")

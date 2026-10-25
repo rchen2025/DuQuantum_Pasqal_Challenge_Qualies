@@ -452,7 +452,8 @@ the summary that code follows (`cvrp/formulations/onehot_ub.py`, tests in `tests
    pairs. **One-hot identity:** `Σ_k c_i x_ik = c_i` on every one-hot string, so all per-customer linear terms
    (λ₁ included) are constants where the model lives and are dropped. What remains is
    `λ₂ Σ_k L_k² + const` — capacity *becomes a load-balance term*, soft, with no `L_k ≤ Q` guarantee
-   (K = 2: the balance optimum is feasible whenever a feasible split exists; K ≥ 3: likely only).
+   (K = 2: the balance term ALONE has a feasible optimum whenever a feasible split exists;
+   this does not guarantee feasibility after adding the distance objective. K ≥ 3: no guarantee).
    Final cost (MODEL.md M4):
 
        E(x) = Σ_k Σ_{i<j} d_ij x_ik x_jk + A Σ_i (1 − Σ_k x_ik)² + 2λ₂ Σ_k Σ_{i<j} d_i d_j x_ik x_jk .
@@ -953,7 +954,10 @@ with respect to the one-hot manifold and most shots leave it (98.6 % non-decodab
 help: the diagonal/side ratio √2 is fixed by planar geometry, so U_min/U_side = 1/8 for every square size, and a
 larger side only lowers both. The honest L statement is therefore: a planar one-hot encoding with K = 4 cannot
 present the device with an energy scale it can resolve in 6 µs — the limit is the K-gon geometry, not the pulse
-or the weights. L_seed01/02 rows follow with the same settings (realised ranks 1 063 / 14 862).
+or the weights. **L_seed01** (same settings, 34 min, peak χ = 32 = cap, provisional): decodable 0.004, feasible 0.004
+(2 shots), best feasible model gap 183 %, CVRP gap 75 % — even though its register's own one-hot ground state is
+capacity-feasible (rank of the optimum 1 063): the sweep does not reach the one-hot manifold at this energy scale.
+L_seed02 follows (realised rank 14 862).
 
 
 ### 6.8 Emulator convergence for the M/L rows (emu-mps)
@@ -1177,3 +1181,75 @@ the slow-region knob (§6.4) lets us spend more of the fixed 6 µs budget where 
 first atoms flip; whether a given setting is slow enough is measured on the
 emulator (P(ground state) versus duration and slow-region centre), and the numbers
 go into the results table, not into this document.
+
+## Revision protocol: two-hour Track A evaluation (2026-10-25)
+
+This appendix fixes the experiment protocol before new results are inspected. The original
+instances, references, registers, and historical results.csv remain unchanged. New records live
+under out/two_hour. These experiments are authorized by the user's implementation request.
+
+### Distinguish three objectives
+
+The constrained clustering objective is f(x) = sum_k sum_{i<j} d_ij x_ik x_jk, minimized
+subject to one assignment per customer and L_k <= Q. The implemented unconstrained energy is
+
+    E(x) = -A sum_ik x_ik + 2A sum_i sum_{k<l} x_ik x_il
+           + sum_k sum_{i<j}(d_ij + 2 lambda_2 d_i d_j) x_ik x_jk + A N.
+
+Only on one-hot strings does its last demand term equal lambda_2 sum_k L_k^2 minus the
+constant lambda_2 sum_i d_i^2. Dropping those linear terms changes the invalid-state landscape;
+this is intentional and A is chosen for the implemented energy. Positive coefficients and
+uniform linear terms are necessary, not sufficient, for a faithful planar embedding.
+The actual device energy is E_device(x) = -delta_f sum_a x_a + sum_{a<b} U_ab x_a x_b.
+Preserving an optimum on tested instances does not mean reproducing every model energy exactly.
+
+For an isolated polygon, 0 < delta_f < U_min favors one excitation. In the full register,
+adding an excitation at a costs -delta_f + sum_{occupied b} U_ab; inter-polygon fields matter.
+The isolated condition is not a sufficient global guarantee. Final single-flip defect gaps
+are not minimum spectral gaps along a pulse; an adiabaticity claim requires additional evidence.
+
+### Classical comparison of alternative clustering objectives
+
+For each nonempty customer subset S, compare:
+- pairwise: sum_{i<j in S} d_ij;
+- medoid: min_{m in S} sum_{i in S} d_im;
+- depot-MST: MST(S) + 2 min_{i in S} d_0i (MST(singleton) = 0).
+
+Every overloaded subset has infinite cost. The existing exact set-partition DP minimizes the
+sum of cluster costs over at most K clusters. Ties follow deterministic subset order, independent
+of route cost. Each returned partition is routed exactly and compared to the same original CVRP
+reference. These are classical model-selection experiments: no quantum embedding is claimed.
+All 11 original instances are attempted in tier order; each model-instance worker has a 120 s
+limit. A timeout has no claimed optimum. Distinct optimal partitions are counted modulo labels.
+
+### Bounded capacity-local post-processing
+
+Only assignment-valid one-hot samples are eligible. Malformed samples are unchanged.
+Define overload O(a) = sum_k max(0, L_k - Q). Enumerate customer relocations and pair swaps.
+While O > 0 accept only a strict reduction in O, selecting by lowest new O, then lowest
+pairwise clustering objective, then deterministic move indices. Once O = 0, permit only
+capacity-preserving moves that strictly decrease the exactly routed distance. Stop at a local
+minimum or after 2N total accepted moves. Cache repeated assignments. No reference solutions,
+feasibility certificates, or exhaustive partition oracle are used to construct a repair.
+Raw counts and raw metrics are preserved. The same repair and route-based selection are applied
+to quantum and uniform one-hot random counts (matched shot budget, random seeds 0, 1, 2).
+Record transform wall time separately. Report 95% Wilson binomial intervals for feasibility and
+success, conditional on each sampled run; these do not capture embedding or emulator bias.
+
+### Frozen capacity-weight development and validation
+
+Generate tier-S seeds 1000 through 1199 with the existing certificate-first generator. Select
+the first eight whose unconstrained distance-optimal clusterings are ALL capacity-infeasible.
+The first four selected instances are development data; the last four are held out. This is an
+explicit difficulty-conditioned sample, not a representative estimate for all random instances.
+Enumerate all 256 bitstrings for kappa in {0, .05, .15, .3, .6, 1}, with
+lambda_2 = kappa R/(2Q) and A recomputed from the existing row-sum rule. Select one global kappa
+by maximizing development instances on which ALL QUBO ground states are feasible; then minimize
+the worst model gap of feasible ground states (infinity when none exist); then minimize kappa.
+Freeze this selection before inspecting held-out results. Compare against kappa=.15 on the
+four held-out instances with the current polygon embedder and pulse, 500 shots per completed
+run, separate register caches, and a 120 s deadline per embedding attempt. No claim is made for
+failed or unfinished jobs. Original S regression checks are additional diagnostics, never tuning.
+
+The experimental freeze is 90 minutes after implementation starts. Optional MPS convergence
+must not displace the held-out experiments or the final 30-minute report-verification period.

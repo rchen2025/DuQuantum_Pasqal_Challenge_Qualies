@@ -64,6 +64,12 @@ def main(argv=None) -> int:
                     tr = energy_descent_repair(f.Q(), float(f.offset))
                     m_rep, _ = score_counts(rec["counts"], f, inst, mopt=mopt, transform=tr)
                     rec["metrics_repaired"] = m_rep.to_dict()
+                elif rec.get("repair") == "capacity-local":
+                    from cvrp.repair import capacity_local_repair
+                    tr = capacity_local_repair(f)
+                    m_rep, _ = score_counts(rec["counts"], f, inst, mopt=mopt, transform=tr)
+                    rec["metrics_repaired"] = m_rep.to_dict()
+                    rec["repair_stats"] = tr.stats()
                 else:
                     print(f"WARN {p}: unknown repair {rec.get('repair')!r}, repaired block left as is")
             n_seen += 1

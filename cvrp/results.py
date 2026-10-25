@@ -41,6 +41,11 @@ COLUMNS = [
     # weights & pulse
     "weights", "pulse_duration_ns", "omega_scale", "delta_init", "slow_region",
     "wall_s", "record",
+    # Additive uncertainty and classical processing fields; legacy records remain readable.
+    "feasibility_ci95_low", "feasibility_ci95_high",
+    "p_model_optimum_ci95_low", "p_model_optimum_ci95_high",
+    "p_reference_ci95_low", "p_reference_ci95_high",
+    "best_routed_over_feasible", "repair_wall_s", "scoring_wall_s",
 ]
 
 
@@ -117,7 +122,14 @@ def rows_from_record(rec: Dict[str, Any], path: str = "") -> List[Dict[str, Any]
             "weights": weights, "pulse_duration_ns": pulse.get("duration_ns"), "omega_scale": pulse.get("omega_scale"),
             "delta_init": pulse.get("delta_init"), "slow_region": pulse.get("slow_region"),
             "wall_s": rec.get("wall_s"), "record": path,
+            "best_routed_over_feasible": m.get("best_routed_over_feasible"),
+            "repair_wall_s": m.get("repair_wall_s"), "scoring_wall_s": m.get("scoring_wall_s"),
         }
+        for prefix, field in (("feasibility", "feasible_rate_ci95"),
+                              ("p_model_optimum", "p_reach_model_optimum_ci95"),
+                              ("p_reference", "p_reach_cvrp_reference_ci95")):
+            interval = m.get(field) or [None, None]
+            row[prefix + "_ci95_low"], row[prefix + "_ci95_high"] = interval
         out.append(row)
     return out
 

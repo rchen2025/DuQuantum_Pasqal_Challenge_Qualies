@@ -21,6 +21,8 @@ is reported separately, never as the headline.
 from __future__ import annotations
 
 from dataclasses import dataclass, field, asdict
+import math
+import time
 from typing import Any, Callable, Dict, List, Optional, Tuple
 
 import numpy as np
@@ -29,6 +31,22 @@ from .common import (Assignment, Clustering, Formulation, Instance, clustering_o
                      route_exactly, str_to_bits)
 
 EPSILONS = (0.0, 1.0, 5.0, 10.0)   # % levels for P(gap <= eps)
+
+
+def wilson_interval(successes: int, trials: int) -> List[float]:
+    """95% Wilson score interval for an observed binomial shot probability.
+
+    This describes finite-shot uncertainty conditional on a fixed sampler;
+    it does not include emulator error or variation across instances/seeds.
+    """
+    if trials <= 0 or not 0 <= successes <= trials:
+        raise ValueError("Wilson interval requires trials > 0 and 0 <= successes <= trials")
+    z = 1.959963984540054
+    p = successes / trials
+    denominator = 1 + z * z / trials
+    center = (p + z * z / (2 * trials)) / denominator
+    radius = z * math.sqrt(p * (1 - p) / trials + z * z / (4 * trials * trials)) / denominator
+    return [max(0.0, center - radius), min(1.0, center + radius)]
 
 
 @dataclass
@@ -134,6 +152,13 @@ class Metrics:
     argmin_energy_bits: str
     argmin_energy_feasible: bool
     top: List[Dict[str, Any]] = field(default_factory=list)
+    feasible_rate_ci95: List[float] = field(default_factory=list)
+    p_reach_model_optimum_ci95: List[float] = field(default_factory=list)
+    p_reach_cvrp_reference_ci95: List[float] = field(default_factory=list)
+    p_gap_le_ci95: Dict[str, List[float]] = field(default_factory=dict)
+    p_cvrp_gap_le_ci95: Dict[str, List[float]] = field(default_factory=dict)
+    repair_wall_s: float = 0.0
+    scoring_wall_s: float = 0.0
 
     def to_dict(self) -> Dict[str, Any]:
         return asdict(self)
@@ -155,6 +180,10 @@ def score_counts(counts: Dict[str, int], f: Formulation, inst: Instance, mopt: O
     """counts: bitstring -> count (bit i = variable i).  ``transform`` is an
     optional labelled post-processing step (e.g. repair) applied to the bits
     before decoding; the caller labels the resulting Metrics accordingly."""
+    score_start = time.perf_counter()
+    repair_wall_s = 0.0
+    if not counts or any(not isinstance(v, (int, np.integer)) or v <= 0 for v in counts.values()):
+        raise ValueError("counts must contain positive integer shot counts")
     if not inst.reference or "cost" not in inst.reference:
         raise ValueError(f"instance {inst.name} has no reference; run cvrp.reference first")
     C_ref = float(inst.reference["cost"])
@@ -181,7 +210,9 @@ def score_counts(counts: Dict[str, int], f: Formulation, inst: Instance, mopt: O
     for bits, cnt in counts.items():
         x = str_to_bits(bits)
         if transform is not None:
+            repair_start = time.perf_counter()
             x = transform(x)
+            repair_wall_s += time.perf_counter() - repair_start
         e = float(x @ Qm @ x + f.offset)
         a = f.decode(x)
         dec = a is not None
@@ -235,6 +266,13 @@ def score_counts(counts: Dict[str, int], f: Formulation, inst: Instance, mopt: O
         argmin_energy_bits=argmin.bits, argmin_energy_feasible=argmin.feasible,
         top=[{"bits": r.bits, "count": r.count, "energy": r.energy, "feasible": r.feasible,
               "objective": r.objective, "model_gap": r.model_gap, "cvrp_gap": r.cvrp_gap} for r in rows[:top]],
+        feasible_rate_ci95=wilson_interval(n_feas, shots),
+        p_reach_model_optimum_ci95=wilson_interval(p_reach_model, shots),
+        p_reach_cvrp_reference_ci95=wilson_interval(p_reach_cvrp, shots),
+        p_gap_le_ci95={k: wilson_interval(v, shots) for k, v in p_le.items()},
+        p_cvrp_gap_le_ci95={k: wilson_interval(v, shots) for k, v in p_cle.items()},
+        repair_wall_s=repair_wall_s,
+        scoring_wall_s=max(0.0, time.perf_counter() - score_start - repair_wall_s),
     )
     return m, rows
 
