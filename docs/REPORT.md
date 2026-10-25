@@ -209,7 +209,7 @@ feasible grouping 10.2 % above it — exactly what qubo-solver's tabu search ret
 4 192 of 59 049, which is the main loss; (iii) the emulated best shots beat the register's own best feasible string
 (82.0 / 101.3 / 93.9 %), so the sweep is not the bottleneck. qubo-solver's independent pipeline lands in the same
 regime (feasible 0.016 / 0.37 / 0.388, CVRP gap 35.2 / 11.2 / 13.6 %), while its tabu search on the same QUBO reaches
-17.6 % / 2.8 % above $C^*$ on M_seed01/02: the QUBO is solvable classically; the planar register limits it.
+17.6 % / 2.8 % above $C^*$ on M_seed01/02: the QUBO is solvable classically; the planar register limits it. Emulator check: M_seed00 needs a bond dimension of only 12, so $\chi=32$ and $\chi=64$ give the same untruncated run (feasible 0.044 vs 0.030, gap 67.9 vs 70.2 %: sampling noise); M_seed01 and L hit the $\chi=32$ cap and are provisional (DERIVATIONS §6.8).
 
 **Tier L — almost nothing valid.** L_seed00 (60 atoms, emu-mps $\chi=32$, 500 shots, $\delta_f=4.475$ rad/µs):
 1.4 % of shots one-hot, 0.8 % feasible, best feasible shot 140 % above the model optimum (79.7 % CVRP gap). The

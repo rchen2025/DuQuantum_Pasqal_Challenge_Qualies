@@ -956,6 +956,17 @@ present the device with an energy scale it can resolve in 6 µs — the limit is
 or the weights. L_seed01/02 rows follow with the same settings (realised ranks 1 063 / 14 862).
 
 
+### 6.8 Emulator convergence for the M/L rows (emu-mps)
+
+emu-mps records the peak bond dimension the state actually needed (`backend_params.peak_bond_dim`, results.csv
+`peak_bond_dim`). M_seed00 (bounded δ_f) peaks at χ = 12 under a cap of 32 and again at 12 under a cap of 64: the cap
+never binds, so the two runs are the same untruncated computation and their differences — feasible 0.044 vs 0.030,
+best model gap 67.9 vs 70.2 %, CVRP gap 29.9 vs 30.7 % — are 500-shot sampling noise (`out/m_tier_chi64/`). M_seed02
+peaks at χ = 7 (also unconstrained). M_seed01 and L_seed00 reach the cap (peak 32 = χ), so those rows are truncated
+and are reported as **provisional** at χ = 32; a χ = 64 re-run of M_seed01 is queued, L at χ = 64 is not affordable
+tonight (48 min at χ = 32). Time-step sensitivity was not scanned; the default emu-mps step is used throughout.
+
+
 ## 7. Questions a judge will ask
 
 **Q1. Why cluster-first / route-second instead of the full CVRP?** The direct (customer, vehicle,

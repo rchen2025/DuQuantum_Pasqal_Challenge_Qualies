@@ -1,4 +1,13 @@
-# STATUS — Sat 2026-10-24, 20:20 ET (hackathon day; freeze Sun 11:00 ET)
+# STATUS — Sat 2026-10-24, 20:45 ET (hackathon day; freeze Sun 11:00 ET)
+
+**20:45 ET.** Report rewritten for a ten-minute judge at Richard's instruction (plain English first, numbered
+equations, pertinent rows only, concrete failures, no AI-use section in the report; `docs/AI_USE.md` kept) — 4 pages.
+Convergence check in (DERIVATIONS §6.8): M_seed00 needs only χ = 12, so χ = 32 and χ = 64 are the same untruncated
+run (feasible 0.044 vs 0.030, gap 67.9 vs 70.2 % = sampling noise); M_seed02 peaks at χ = 7; M_seed01 and L_seed00
+hit the χ = 32 cap and are provisional — M_seed01 χ = 64 queued. L_seed01 emulating (started 20:09), L_seed02 next.
+results.csv 77 rows. Gate 2 presented 20:20; no answer yet → overnight plan as stated (Track A only, routing as
+appendix).
+
 
 **20:20 ET.** First tier-L row (L_seed00, 60 atoms, emu-mps χ = 32, bounded δ_f = 4.475 rad/µs, 48 min): decodable
 1.4 %, capacity-feasible 0.8 %, best feasible model gap 140 %, CVRP gap 80 %. Explanation in DERIVATIONS §6.7: at
