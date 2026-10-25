@@ -158,13 +158,17 @@ def run_one(inst: Instance, formulation: str, backend: str, shots: int, seed: in
     if emb is None:
         if embedder == "generic":
             emb = embed(J, h, seed=seed, **embed_kw)
-        elif embedder == "polygons":
+        elif embedder == "polygons" or embedder.startswith("polygons-cross"):
             from .embed_onehot import embed_onehot
             if f.n_vars != inst.N * inst.K:
                 raise ValueError("embedder=polygons needs a one-hot formulation with N*K variables")
+            if embedder.startswith("polygons-cross"):
+                # 'polygons-cross8' = polygon embedding with atoms of different polygons kept >= 8 um apart
+                # (DERIVATIONS 6.7 geometry experiment); its own cache key and method label
+                embed_kw["cross_min_um"] = float(embedder[len("polygons-cross"):])
             emb = embed_onehot(J, h, inst.N, inst.K, seed=seed, **embed_kw)
         else:
-            raise ValueError(f"unknown embedder {embedder!r} (generic | polygons)")
+            raise ValueError(f"unknown embedder {embedder!r} (generic | polygons | polygons-cross<um>)")
         if cache_file is not None:
             cache_file.parent.mkdir(parents=True, exist_ok=True)
             cache_file.write_text(json.dumps(emb.to_dict(), indent=1, default=_json_default))
@@ -342,7 +346,7 @@ def main(argv=None):
     ap.add_argument("--pulse", default="", help="pulse overrides, e.g. duration_ns=3000,omega_scale=0.8")
     ap.add_argument("--slow", nargs=3, type=float, metavar=("CENTRE", "WIDTH", "FACTOR"), default=None)
     ap.add_argument("--bond-dim", type=int, default=64)
-    ap.add_argument("--embedder", default="generic", help="generic | polygons (structure-aware one-hot embedding, cvrp.embed_onehot)")
+    ap.add_argument("--embedder", default="generic", help="generic | polygons (structure-aware one-hot embedding, cvrp.embed_onehot) | polygons-cross<um> (same, atoms of different polygons >= <um> apart)")
     ap.add_argument("--embedding-cache", default=EMBEDDING_CACHE, help="directory of cached registers ('' to disable)")
     ap.add_argument("--repair", default="none", choices=("none", "energy-descent", "capacity-local"),
                     help="classical post-processing (labelled separately)")

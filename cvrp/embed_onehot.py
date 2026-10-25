@@ -135,8 +135,14 @@ def _mds(Dt: np.ndarray, rng: np.random.Generator) -> np.ndarray:
 
 
 def embed_onehot(J: np.ndarray, h: np.ndarray, N: int, K: int, device: Any = None, seed: int = 0,
-                 n_starts: int = 6, side_margin: float = 1e-3, maxiter: int = 3000, _debug: Optional[dict] = None) -> Embedding:
-    """One-hot QUBO (variable i*K+k) -> register exact on the one-hot subspace.  See module doc."""
+                 n_starts: int = 6, side_margin: float = 1e-3, maxiter: int = 3000, _debug: Optional[dict] = None,
+                 cross_min_um: Optional[float] = None) -> Embedding:
+    """One-hot QUBO (variable i*K+k) -> register exact on the one-hot subspace.  See module doc.
+
+    ``cross_min_um``: minimum distance between atoms of *different* polygons (default: the device minimum, 5 µm).
+    A larger value caps every spurious cross-polygon coupling at C6/cross_min^6 (9.5 µm -> 1.2 rad/µs); used for
+    the tier-L geometry experiment (docs/checks/L_diagnosis.md) where the device-limit packing put wanted ~1 rad/µs
+    pairs at 5 µm (55 rad/µs)."""
     from scipy.optimize import minimize
 
     if device is None:
@@ -197,6 +203,9 @@ def embed_onehot(J: np.ndarray, h: np.ndarray, N: int, K: int, device: Any = Non
     Tpos = T[iu]
     wts = 1.0 / np.maximum(Tpos, 1e-12) ** 2                 # relative error
     d_min = limits.min_atom_distance
+    d_sep = float(cross_min_um) if cross_min_um is not None else d_min      # inter-polygon separation enforced
+    if cross_min_um is not None:
+        notes.append(f"inter-polygon minimum distance raised to {d_sep:.2f} µm (device minimum {d_min:.2f})")
     r_max = limits.max_radial_distance
     mu = 50.0 * float(wts.max()) * (C6 / d_min ** 6) ** 2 / d_min ** 2
 
@@ -271,7 +280,7 @@ def embed_onehot(J: np.ndarray, h: np.ndarray, N: int, K: int, device: Any = Non
         _, d = _pairwise(pts)
         owner = np.repeat(np.arange(N), K)
         other = owner[:, None] != owner[None, :]
-        viol = np.where(other, np.maximum(0.0, d_min * (1 + 2e-3) - d), 0.0)
+        viol = np.where(other, np.maximum(0.0, d_sep * (1 + 2e-3) - d), 0.0)
         f += 0.5 * mu * float((viol ** 2).sum())
         if r_max is not None:
             rad = np.sqrt((pts ** 2).sum(1))
@@ -314,7 +323,7 @@ def embed_onehot(J: np.ndarray, h: np.ndarray, N: int, K: int, device: Any = Non
         # (3) min-distance hinge (different polygons) and radius hinge: direct position gradients
         d = np.sqrt(d2)
         other = owner_idx[:, None] != owner_idx[None, :]
-        viol = np.where(other, np.maximum(0.0, d_min * (1 + 2e-3) - d), 0.0)
+        viol = np.where(other, np.maximum(0.0, d_sep * (1 + 2e-3) - d), 0.0)
         f += 0.5 * mu * float((viol ** 2).sum())
         gp = ((-mu * viol / d)[:, :, None] * diff).sum(1) * 2.0 * 0.5 * 2.0   # each pair twice in the matrix -> factor handled
         if r_max is not None:
@@ -378,7 +387,7 @@ def embed_onehot(J: np.ndarray, h: np.ndarray, N: int, K: int, device: Any = Non
         i, j = np.unravel_index(int(np.argmin(d)), d.shape)
         rad = np.sqrt((pts ** 2).sum(1))
         k = int(np.argmax(rad))
-        sep_ok = d[i, j] >= d_min * (1 + 2e-3)
+        sep_ok = d[i, j] >= d_sep * (1 + 2e-3)
         rad_ok = rad[k] <= r_lim
         if sep_ok and rad_ok:
             break
@@ -392,7 +401,7 @@ def embed_onehot(J: np.ndarray, h: np.ndarray, N: int, K: int, device: Any = Non
             v = c[a] - c[b]
             nv = np.linalg.norm(v)
             v = v / nv if nv > 1e-9 else np.array([1.0, 0.0])
-            push = 0.5 * (d_min * (1 + 3e-3) - d[i, j])
+            push = 0.5 * (d_sep * (1 + 3e-3) - d[i, j])
             c[a] += push * v
             c[b] -= push * v
             notes_push = True
