@@ -9,8 +9,6 @@ Track A (capacity-feasible clustering) is the primary submission; Track B (clust
 |---|---|
 | 📄 [**Report** (4 pages, PDF)](submission/report.pdf) | model, variable accounting, embedding, pulse design, results, what did not work — editable LaTeX in [`submission/report_src/`](submission/report_src/) |
 | 📘 **README** (this file) | everything in the report, plus full tables, derivations and reproduction commands |
-| 🎤 [**Presentation script**](submission/PRESENTATION_SCRIPT.md) | the 4-minute talk, slide by slide, with Q&A answers |
-| 🧭 [**Plain-language explainer**](submission/EXPLAINER.md) | the problem, the Hamiltonian, every model choice, decision and error, for a non-specialist |
 
 > One-command reproduction of the headline row:
 > ```bash
