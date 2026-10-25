@@ -10,7 +10,9 @@ least candidates for the global-detuning-only ``AnalogDevice``:
   (handoff spec "Encoding 2"), exact TSP only for n <= 4 (cycle-cover
   relaxation beyond that; the production builder refuses n > 4).
 
-Everything here is a *standalone routing fixture* study (``routing.fixtures``,
-``routing.check``, ``routing.pilot``); it is not an end-to-end Track B run on
-Part A clusterings.  See ``docs/ROUTING.md``.
+``routing.fixtures`` / ``routing.check`` / ``routing.pilot`` are the standalone
+fixture study (slice 1); ``routing.solve_cluster`` is the integration boundary
+that routes frozen Part A clusters (slice 2, driven by
+``scripts/routing_integrate.py``).  Emulation only, no hardware.  See
+``docs/ROUTING.md``.
 """

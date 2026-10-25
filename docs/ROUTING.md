@@ -1,14 +1,18 @@
-# Track B routing — first slice: two tour encodings, exhaustive checks, a 4-customer pilot
+# Track B routing — two tour encodings, exhaustive checks, a 4-customer pilot, and Part A clusterings routed through it
 
-**Status: standalone fixtures, not an end-to-end Track B run.** Everything below is classical
-algebra plus *emulation* (`cvrp.svsim`, exact state vector) on hand-made 4/5/6-customer
-fixtures (`routing/fixtures.py`). Nothing ran on hardware; no Part A clustering has been routed
-through this code yet. Numbers come from the records named in §6, produced by
-`scripts/routing_demo.py`.
+**Status: emulation only, no hardware.** §1–§6 (slice 1) are classical algebra plus *emulation*
+(`cvrp.svsim`, exact state vector) on hand-made 4/5/6-customer fixtures (`routing/fixtures.py`).
+§8 (slice 2) routes genuine Part A clusterings (two tier-M emu-mps run records) through the
+`solve_cluster` boundary: quantum routing was attempted only on the n = 4 clusters, and 1 of 5
+attempts returned a raw valid tour (20 % above the exact TSP); every other n = 4 attempt fell
+back to exact classical routing and is labelled so. Numbers come from the records named in §6
+and §8.6, produced by `scripts/routing_demo.py` and `scripts/routing_integrate.py`.
 
 Code: `routing/encodings.py` (builders + strict decoders), `routing/check.py` (exhaustive
-checks), `routing/fixtures.py`, `routing/pilot.py`, `scripts/routing_demo.py`,
-`tests/test_routing_encodings.py`, `tests/test_routing_pilot.py`. Spec followed: the Part B
+checks), `routing/fixtures.py`, `routing/pilot.py`, `routing/solve_cluster.py` (integration
+boundary), `scripts/routing_demo.py`, `scripts/routing_integrate.py`,
+`tests/test_routing_encodings.py`, `tests/test_routing_pilot.py`,
+`tests/test_routing_solve_cluster.py`. Spec followed: the Part B
 implementation handoff (24 Oct 2026); its equations are reproduced here so the code can be
 checked against the text.
 
@@ -248,12 +252,172 @@ proof, or accepting that the edge model's line-graph couplings have no planar 1/
 sandbox including the 16-atom exact run; `--position-emulation no` skips it and only writes the
 sequence for emu-sv).
 
-## 7. Not done / open
+## 7. Not done / open (after slice 1)
 
-* No Part A clusterings routed; no `solve_cluster(...)` integration boundary (disjointness /
-  coverage / capacity validation) yet — the fixtures are hand made.
+* ~~No Part A clusterings routed; no `solve_cluster(...)` integration boundary~~ → done in §8.
 * No structure-aware embedding for either routing encoding; the generic embedder is the
-  measured failure point.
-* No pulse tuning (one Part A default pulse); no equal-budget comparison beyond this single run.
+  measured failure point (§5, confirmed on all four Part A clusters in §8.4).
+* No pulse tuning (one Part A default pulse); no equal-budget comparison beyond the single run.
 * No n = 5 position (25 atoms) run; it needs emu-mps with convergence checks on the Windows venv.
+* No hardware execution anywhere.
+
+---
+
+## 8. Slice 2: integration — Part A clusterings through `solve_cluster`
+
+**Honest status: quantum routing attempted only on 4-customer clusters (5 attempts, 4 distinct
+customer sets, 1000 shots per encoding each); raw valid-tour probability 1/4000 for the edge
+model and 0/4000 for the position model; one attempt returned a raw quantum route (20.4 % above
+the exact tour), every other quantum attempt fell back to exact classical routing and is
+labelled `classical-exact-fallback` with its reason.** No cluster of size ≥ 5 occurred in these
+inputs, so the n ≥ 5 fallback policy was exercised only by the unit tests. Emulation only
+(`cvrp.svsim`); nothing ran on hardware.
+
+### 8.1 Boundary: `routing/solve_cluster.py`
+
+`solve_cluster(inst, customer_ids, RoutingConfig) -> RoutingResult`. The cluster is a frozen set
+of original customer indices (0..N−1 of `cvrp.common.Instance`); routing never changes it.
+
+* **Validation** (`validate_cluster`): non-empty, no duplicates, every id in 0..N−1, Σ demand ≤ Q
+  (`inst.demands`, `inst.Q`) → `ValueError` otherwise. `validate_clustering` adds disjoint,
+  covering, ≤ K non-empty clusters. Invalid Part A output is rejected, never repaired here.
+* **Local geometry**: local index 0 = depot, local k = `customer_ids[k−1]`; the local matrix is the
+  sub-matrix `[0, id+1, ...]` of `inst.dist_matrix()` (its row 0 is the depot). Returned route
+  costs are **recomputed from the instance matrix** (`route_cost_from_instance`), never taken from
+  a model energy.
+* **Policy**: n ≤ 3 → `classical-exact` (`cvrp.common.tsp_exact`); n = 4 → both encodings (edge 10
+  atoms, position 16 atoms) through `routing.pilot.run_encoding` (generic `cvrp.embed.embed`,
+  6 embed seeds × 8 starts selected by fidelity only, Part A default pulse, Pulser-validated
+  sequence, `cvrp.svsim` exact emulation, 1000 shots each); the returned route is the **best raw
+  valid shot** over the two encodings (strict decode, no repair; ties → more raw valid shots, then
+  edge). No valid shot in either encoding → exact classical route, `fallback=True`,
+  `reason="n=4: no raw valid tour in 1000 shots of any emulated encoding (edge, position)"`.
+  n ≥ 5 → exact classical, `fallback=True`, `reason="n>4: position model 25+ atoms not run here;
+  edge model is a cycle-cover relaxation for n>=5"`.
+* **`RoutingResult`**: route (local, depot both ends) and `route_ids` (original ids, `"depot"` both
+  ends), cost, method, encoding, atoms, shots / `n_raw_valid` / `n_raw_optimal`, `raw_best_cost`
+  (null if no valid shot), fallback flag + reason, exact reference (cost, route, method), gap vs
+  exact, runtime, per-encoding embedding diagnostics, backend + versions, seed + config, paths of
+  the raw-sample records (counts, register, sequence) written separately under `out/routing/`.
+
+### 8.2 Inputs: `scripts/routing_integrate.py`
+
+Part A run records `out/m_tier/M_seed01__onehot-ub[emb=polygons]_emu-mps__seed0.json` and
+`..._M_seed02_...` (tier M: N = 10, K = 3, Q = 20; 500 emu-mps shots each). Every shot is decoded
+with the record's own formulation and weights (`cvrp.model.get_formulation("onehot-ub", inst,
+lam2=…, A=…)`); the **best feasible shot by model objective** is the clustering Part A returned
+(`best-shot`; ties would be broken by the lexicographically smallest assignment tuple — there was
+no tie: 1 assignment and 1 clustering at the minimum in both records; 194/500 and 223/500 shots
+feasible). The **exact model-optimal clustering** (`cvrp.metrics.model_optimum`, enumeration of
+all 3¹⁰ assignments, unique optimum in both instances) is the second input (`model-opt`).
+Each clustering is validated and every cluster routed with `solve_cluster`. A cluster that occurs
+in two inputs (same instance, same customer set) is emulated once and the result reused (marked).
+
+### 8.3 Per-cluster results
+
+(generated into `out/routing/integration.md`; copied verbatim)
+
+| source | cluster (ids) | n | method | encoding | atoms | shots | raw valid (edge/pos) | raw optimal (edge/pos) | raw best cost | returned cost | exact TSP | gap % | fallback reason | record |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| M_seed01/best-shot | [2, 7, 9] | 3 | classical-exact | - | - | - | - | - | null | 80.767 | 80.767 | 0.00 | - | - |
+| M_seed01/best-shot | [3, 4, 5] | 3 | classical-exact | - | - | - | - | - | null | 135.226 | 135.226 | 0.00 | - | - |
+| M_seed01/best-shot | [0, 1, 6, 8] | 4 | quantum-raw | edge | 10 | 2000 | 1/0 | 0/0 | 224.477 | 224.477 | 186.376 | 20.44 | - | `cluster_M_seed01_c0-1-6-8_edge.json`, `cluster_M_seed01_c0-1-6-8_position.json` |
+| M_seed01/model-opt | [0, 1, 6] | 3 | classical-exact | - | - | - | - | - | null | 139.829 | 139.829 | 0.00 | - | - |
+| M_seed01/model-opt | [3, 4, 5] | 3 | classical-exact | - | - | - | - | - | null | 135.226 | 135.226 | 0.00 | - (same cluster as in `M_seed01/best-shot`: result reused) | - |
+| M_seed01/model-opt | [2, 7, 8, 9] | 4 | classical-exact-fallback | - | 16 | 2000 | 0/0 | 0/0 | null | 93.305 | 93.305 | 0.00 | n=4: no raw valid tour in 1000 shots of any emulated encoding (edge, position) | `cluster_M_seed01_c2-7-8-9_edge.json`, `cluster_M_seed01_c2-7-8-9_position.json` |
+| M_seed02/best-shot | [0, 5, 9] | 3 | classical-exact | - | - | - | - | - | null | 101.333 | 101.333 | 0.00 | - | - |
+| M_seed02/best-shot | [1, 3, 8] | 3 | classical-exact | - | - | - | - | - | null | 228.355 | 228.355 | 0.00 | - | - |
+| M_seed02/best-shot | [2, 4, 6, 7] | 4 | classical-exact-fallback | - | 16 | 2000 | 0/0 | 0/0 | null | 88.901 | 88.901 | 0.00 | n=4: no raw valid tour in 1000 shots of any emulated encoding (edge, position) | `cluster_M_seed02_c2-4-6-7_edge.json`, `cluster_M_seed02_c2-4-6-7_position.json` |
+| M_seed02/model-opt | [1, 8] | 2 | classical-exact | - | - | - | - | - | null | 162.775 | 162.775 | 0.00 | - | - |
+| M_seed02/model-opt | [0, 3, 5, 9] | 4 | classical-exact-fallback | - | 16 | 2000 | 0/0 | 0/0 | null | 133.941 | 133.941 | 0.00 | n=4: no raw valid tour in 1000 shots of any emulated encoding (edge, position) | `cluster_M_seed02_c0-3-5-9_edge.json`, `cluster_M_seed02_c0-3-5-9_position.json` |
+| M_seed02/model-opt | [2, 4, 6, 7] | 4 | classical-exact-fallback | - | 16 | 2000 | 0/0 | 0/0 | null | 88.901 | 88.901 | 0.00 | n=4: no raw valid tour in 1000 shots of any emulated encoding (edge, position) (same cluster as in `M_seed02/best-shot`: result reused) | `cluster_M_seed02_c2-4-6-7_edge.json`, `cluster_M_seed02_c2-4-6-7_position.json` |
+
+Raw valid / raw optimal are shot counts out of 1000 per encoding (edge / position). The single
+quantum route is `depot → 0 → 6 → 8 → 1 → depot` (cost 224.477) against the exact tour
+`depot → 0 → 6 → 1 → 8 → depot` (186.376): one valid shot out of 1000, 20.4 % long; it is kept as
+the returned route because the policy returns raw valid samples, and C_end pays for it below.
+
+### 8.4 Per-encoding diagnostics (formulation / geometry / dynamics separately)
+
+| cluster | encoding | atoms | C_opt | A | target GS optimal | rel-Frob | spurious J / 2A | device argmin decodes | rank(opt) | raw valid | raw optimal | exact P(valid) | exact P(opt) | rand-bits valid | rand-bits P(opt) | rand-tour P(opt) | emu s |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| M_seed01 [0, 1, 6, 8] | edge | 10 | 186.376 | 188.9 | True | 0.781 | 26 / 378 | False | 146 of 1024 | 1/1000 | 0/1000 | 0.00036 | 0.000002 | 0.014 | 0.001 | 0.083 | 2 |
+| M_seed01 [0, 1, 6, 8] | position | 16 | 186.376 | 188.9 | True | 0.981 | 7 / 378 | False | 449 of 65536 | 0/1000 | 0/1000 | 0.00000 | 0.000000 | 0.000 | 0.000 | 0.083 | 147 |
+| M_seed01 [2, 7, 8, 9] | edge | 10 | 93.305 | 95.9 | True | 0.781 | 125 / 192 | False | 129 of 1024 | 0/1000 | 0/1000 | 0.00027 | 0.000002 | 0.014 | 0.003 | 0.083 | 2 |
+| M_seed01 [2, 7, 8, 9] | position | 16 | 93.305 | 95.9 | True | 0.985 | 4 / 192 | False | 622 of 65536 | 0/1000 | 0/1000 | 0.00000 | 0.000000 | 0.000 | 0.000 | 0.083 | 141 |
+| M_seed02 [2, 4, 6, 7] | edge | 10 | 88.901 | 94.1 | True | 0.787 | 126 / 188 | False | 135 of 1024 | 0/1000 | 0/1000 | 0.00022 | 0.000004 | 0.014 | 0.000 | 0.083 | 2 |
+| M_seed02 [2, 4, 6, 7] | position | 16 | 88.901 | 94.1 | True | 0.980 | 5 / 188 | False | 429 of 65536 | 0/1000 | 0/1000 | 0.00000 | 0.000000 | 0.000 | 0.000 | 0.083 | 135 |
+| M_seed02 [0, 3, 5, 9] | edge | 10 | 133.941 | 160.4 | True | 0.793 | 217 / 321 | False | 140 of 1024 | 0/1000 | 0/1000 | 0.00020 | 0.000010 | 0.014 | 0.001 | 0.083 | 2 |
+| M_seed02 [0, 3, 5, 9] | position | 16 | 133.941 | 160.4 | True | 0.987 | 7 / 321 | False | 668 of 65536 | 0/1000 | 0/1000 | 0.00000 | 0.000000 | 0.000 | 0.000 | 0.083 | 133 |
+
+Columns as in §5. Reading: on every cluster both QUBOs have the optimal tour as their unique
+ground state (formulation correct); the generic planar embedding reproduces neither (rel-Frob
+0.78–0.79 edge, 0.98–0.99 position; a J = 0 pair of the edge model receives up to 217 QUBO
+units against wanted couplings of 2A = 321); under the realised zero-drive device energies the
+optimal tour ranks 129th–146th of 1024 (edge) and 429th–668th of 65 536 (position) and the device
+argmin never decodes to a tour; the emulated pulse then samples what the embedded register
+asks for: exact P(valid) 2–4 × 10⁻⁴ (edge), < 10⁻⁵ (position), P(optimal) ≤ 10⁻⁵. Both are below
+uniform random bitstrings (edge 1.4 % valid) and far below uniform random valid tours (100 %
+valid, P(opt) = 1/12). Same picture as the `quad4` fixture (§5); no quantum advantage claim is
+made.
+
+| encoding | distinct n=4 clusters | emulated | shots | raw valid | raw optimal | raw valid rate | clusters with >= 1 valid shot |
+|---|---|---|---|---|---|---|---|
+| edge | 4 | 4 | 4000 | 1 | 0 | 0.0003 | 1 |
+| position | 4 | 4 | 4000 | 0 | 0 | 0.0000 | 0 |
+
+### 8.5 End to end
+
+C_ref = `inst.reference["cost"]` (best known of qubo-solver SA and constrained SA, `found_by: constrained-sa` on both; on M_seed02 the qubo-solver value is 370.884, above C_ref); C_dec = exact routing
+of the model-optimal clustering; C_clust = exact routing of the selected clustering; C_end = the
+routes actually returned (fallbacks included; they are excluded from the quantum routing gaps).
+`C_end − C_ref = (C_dec − C_ref) + (C_clust − C_dec) + (C_end − C_clust)`; the identity holds to
+< 1e-9 on every row (`split.identity_abs_error` in the records); gap % uses C_ref as denominator.
+
+| source | instance | clusters | C_ref | C_dec | C_clust | C_end | C_dec−C_ref | C_clust−C_dec | C_end−C_clust | C_end−C_ref | gap_end % | trivial | attempted quantum | raw quantum routes | fallbacks |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| M_seed01/best-shot | M_seed01 | [[2, 7, 9], [3, 4, 5], [0, 1, 6, 8]] | 368.360 | 368.360 | 402.369 | 440.470 | 0.000 | 34.009 | 38.101 | 72.110 | 19.58 | 2 | 1 | 1 | 0 |
+| M_seed01/model-opt | M_seed01 | [[0, 1, 6], [3, 4, 5], [2, 7, 8, 9]] | 368.360 | 368.360 | 368.360 | 368.360 | 0.000 | 0.000 | 0.000 | 0.000 | 0.00 | 2 | 1 | 0 | 1 |
+| M_seed02/best-shot | M_seed02 | [[0, 5, 9], [1, 3, 8], [2, 4, 6, 7]] | 360.859 | 385.617 | 418.588 | 418.588 | 24.758 | 32.971 | 0.000 | 57.730 | 16.00 | 2 | 1 | 0 | 1 |
+| M_seed02/model-opt | M_seed02 | [[1, 8], [0, 3, 5, 9], [2, 4, 6, 7]] | 360.859 | 385.617 | 385.617 | 385.617 | 24.758 | 0.000 | 0.000 | 24.758 | 6.86 | 1 | 2 | 0 | 2 |
+
+Reading: the decomposition loss is 0 on M_seed01 (the model optimum *is* the CVRP reference) and
+24.8 (6.9 %) on M_seed02; the clustering loss of the emu-mps best shots is 34.0 and 33.0 (the
+Part A sampler did not reach the model optimum in 500 shots: Track A's problem, measured
+there); the routing loss is 0 wherever the route is exact (trivial clusters and fallbacks) and
+38.1 on the one cluster where a raw quantum tour was returned. The quantum router therefore
+**added** cost end to end on the only cluster where it produced anything; the model-opt rows
+show what exact routing of the same clusterings gives.
+
+Counts over the 4 inputs: 12 clusters routed; 7 trivial (n ≤ 3, exact); 5 attempted quantum
+(n = 4; 4 distinct customer sets emulated, one reused); 1 successful raw quantum route (0
+optimal); 4 classical fallbacks, all after a failed quantum attempt; 0 clusters with n ≥ 5.
+10 000 quantum shots in total (5 attempts × 2 encodings × 1000), 1 raw valid, 0 raw optimal.
+Wall time 633 s on this sandbox (2 cores; ≈ 140 s per 16-atom exact emulation).
+
+### 8.6 Records
+
+| file | content |
+|---|---|
+| `out/routing/integration.md` | §8.3–8.5 tables, generated (`--rebuild-md` rewrites it from the JSON without emulating) |
+| `out/routing/integration.json` | all four summaries + totals + config |
+| `out/routing/integration_M_seed0{1,2}_{best-shot,model-opt}.json` | per input: Part A record used, best shot + tie count, model optimum, selected clusters, per-cluster `RoutingResult`s, three-term split, counts |
+| `out/routing/cluster_<inst>_c<ids>_{edge,position}.json` | per emulated cluster and encoding: targets, embedding (+ restart sweep), device energies, baselines, scored samples, **raw counts** |
+| `out/routing/seq_<inst>_c<ids>_{edge,position}.json`, `register_…` | validated Pulser sequences (`to_abstract_repr()`) and registers with variable names |
+
+Regenerate: `PYTHONPATH=/home/claude/_pydeps:. python3 scripts/routing_integrate.py` (≈ 11 min
+here; `--position-emulation no` skips the 16-atom runs and saves only their sequences).
+Tests: `python3 scripts/run_tests.py routing_` → 20 passed (encodings 9, pilot 4,
+solve_cluster 7: validation errors, depot-at-0 local matrix, cost recomputation, n ≤ 3 exact and
+unflagged, n ≥ 5 fallback flagged with the stated reason, decomposition identity, config).
+
+### 8.7 Still open after slice 2
+
+* The lever is still the embedding (§5 conclusion): a structure-aware register for the routing
+  encodings, or a smaller legal A with its own soundness proof. Until then the quantum router
+  is, by measurement, worse than returning a random valid tour.
+* n = 5 position model (25 atoms) untested; n ≥ 5 is exact classical by policy and so labelled.
+* Only two tier-M Part A records (10 customers each) were routed; no tier-L cluster sizes seen.
+* No repair variant (assignment projection + 2-opt) was run; if added it must stay a separately
+  labelled method and never replace the raw metric.
 * No hardware execution anywhere.
