@@ -942,6 +942,19 @@ qubo-solver's independent pipeline on the same instances land in the same regime
 at K = 3 rather than of our embedder. The brief's "if no shot is feasible, the gap is undefined" rows are kept
 under `|pre-6.7` as the record of the mistake.
 
+**Tier L (K = 4), first measured row (L_seed00, emu-mps χ = 32, 500 shots, 48 min; register = cached, δ_f = 4.475
+= 0.65 U_min):** decodable 0.014, capacity-feasible 0.008 (4 shots), best feasible model gap 140 %, CVRP gap 80 %,
+P(reach) 0; random control 0/2000. Why so much worse than M even with the right end point: for K = 4 the bound
+forces δ_f below the diagonal coupling 6.9 rad/µs, so the *entire* one-hot energy landscape of the 60-atom
+register is compressed into a window of a few rad/µs — the single-flip defect gaps are 1.1 rad/µs (results.csv
+`realized_register`), against 19–23 rad/µs on M. A sweep of δ from −25.1 to +4.5 rad/µs over 0.7 × 5800 ns has rate
+|δ̇| ≈ 7 rad/µs², far above the Landau–Zener scale Δ² ≈ 1.2 (rad/µs)² (§6.1), so the evolution is not adiabatic
+with respect to the one-hot manifold and most shots leave it (98.6 % non-decodable). Opening the squares does not
+help: the diagonal/side ratio √2 is fixed by planar geometry, so U_min/U_side = 1/8 for every square size, and a
+larger side only lowers both. The honest L statement is therefore: a planar one-hot encoding with K = 4 cannot
+present the device with an energy scale it can resolve in 6 µs — the limit is the K-gon geometry, not the pulse
+or the weights. L_seed01/02 rows follow with the same settings (realised ranks 1 063 / 14 862).
+
 
 ## 7. Questions a judge will ask
 

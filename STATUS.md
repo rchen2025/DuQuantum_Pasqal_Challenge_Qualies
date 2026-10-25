@@ -1,4 +1,13 @@
-# STATUS — Sat 2026-10-24, 19:15 ET (hackathon day; freeze Sun 11:00 ET)
+# STATUS — Sat 2026-10-24, 20:20 ET (hackathon day; freeze Sun 11:00 ET)
+
+**20:20 ET.** First tier-L row (L_seed00, 60 atoms, emu-mps χ = 32, bounded δ_f = 4.475 rad/µs, 48 min): decodable
+1.4 %, capacity-feasible 0.8 %, best feasible model gap 140 %, CVRP gap 80 %. Explanation in DERIVATIONS §6.7: at
+K = 4 the square's diagonal coupling (6.9 rad/µs) caps δ_f, compressing the one-hot landscape into a few rad/µs
+(defect gaps 1.1 rad/µs vs 19–23 on M) — the 5.8 µs sweep is far from adiabatic there, so the register is the
+limit, not the pulse. L_seed01/02 running (same settings), then M_seed00 at χ = 64. Report refresh 4 is out
+(5 pages, cap lifted; the 18:50 PDF was stale — build failure now caught). results.csv 76 rows. Track B slice 2
+(integration) committed, standalone. Gate 2 to Richard at 20:30.
+
 
 **19:15 ET.** Team review of report_1850 (handoff "Agent next steps") acted on: (P1) the δ_f bound was derived for
 triangles; a K = 4 square's diagonal pair is 8× weaker (6.9 rad/µs), so the first L run (δ_f 38.7) favoured two
